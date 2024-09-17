@@ -116,8 +116,35 @@ mingw32-make
 import numpy as np
 from sparse_matrix_mult import sparse_matrix_multiply
 
-A = np.array([[1, 2], [3, 4]])
-B = np.array([[5, 6], [7, 8]])
+ # Define demonstration matrices
+    A_matrix = np.array([
+        [0.64, 0.99, 0.89, 0.72],
+        [0,    0.67, 0.54, 0   ],
+        [0,    0.32, 0,    0   ],
+        [0.1,  0,    0,    0   ]
+    ])
+    
+    B_matrix = np.array([
+        [0.23, 0,    0,    0.51],
+        [0,    0.72, 0,    0   ],
+        [0,    0,    0.99, 0   ],
+        [0,    0.76, 0.87, 0.97]
+    ])
+
+    C_matrix = np.array([
+        [1, 2, 3, 4],
+        [0, 5, 6, 0],
+        [0, 0, 7, 8],
+        [9, 0, 0, 10]
+    ])
+
+    D_matrix = np.array([
+        [0.1, 0.2],
+        [0.3, 0.4],
+        [0.5, 0.6],
+        [0.7, 0.8]
+    ])
+
 result = sparse_matrix_multiply(A, B, output_format='dense')
 print(result)
 ```
