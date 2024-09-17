@@ -53,51 +53,76 @@ This work was supported by funds from National Science Foundation under Grant No
 For questions or support, please contact:
 Vineet Yadav (vineet.yadav@jpl.nasa.gov)
 
-## Compilation Instructions
+## Installation Instructions
 
-This package includes pre-compiled libraries for x64 and ARM64 architectures on Linux, macOS, and Windows. However, if you need to compile the libraries yourself, we provide Makefiles for Linux systems:
+## Installation
 
-### Linux Compilation
+### Option 1: Using setup.py (Recommended)
 
-We provide two Makefiles for different Linux compilation scenarios:
+1. Ensure you have Python 3.6+ and pip installed.
+2. Run:
+   ```
+   pip install .
+   ```
+   or
+   ```
+   python setup.py install
+   ```
 
-1. **Building for Current Architecture**
+### Option 2: Using Makefiles
 
-   If you want to build the library for your current Linux system architecture:
+#### macOS
+```
+make -f Makefile.mac
+```
 
-   1. Navigate to the `src/` directory.
-   2. Run the following command:
+#### Linux
+```
+make
+```
 
-      ```
-      make -f Makefile.linux
-      ```
+#### Windows
+Windows users should prefer the setup.py method. If using Make is necessary, ensure MinGW-w64 is installed and use:
+```
+mingw32-make
+```
 
-   This will generate the appropriate library for your system's architecture.
+### Troubleshooting
 
-2. **Cross-Compilation (x64 and ARM64)**
+- **Build Tools**: 
+  - macOS: Install Xcode Command Line Tools (`xcode-select --install`)
+  - Linux: Install GCC and Make (`sudo apt-get install build-essential` on Ubuntu)
+  - Windows: Install Visual C++ build tools or MinGW-w64
 
-   If you need to build libraries for both x64 and ARM64 architectures on Linux:
+- **Python Dependencies**:
+  ```
+  pip install numpy scipy
+  ```
 
-   1. Ensure you have the necessary cross-compilation toolchain installed (aarch64-linux-gnu-g++).
-   2. Navigate to the `src/` directory.
-   3. Run the following command:
+- **OpenMP on macOS**:
+  ```
+  brew install libomp
+  ```
 
-      ```
-      make -f Makefile.linux_cross_compile
-      ```
+- **Clean Build**:
+  ```
+  make clean
+  make
+  ```
 
-   This will generate libraries for both x64 and ARM64 architectures.
+### Verifying Installation
 
-   Note: Cross-compilation requires appropriate tools and may not work on all systems.
+```python
+import numpy as np
+from sparse_matrix_mult import sparse_matrix_multiply
 
-For both Makefiles, you can use `make -f <Makefile_name> clean` to remove compiled libraries, and `make -f <Makefile_name> help` for more information.
+A = np.array([[1, 2], [3, 4]])
+B = np.array([[5, 6], [7, 8]])
+result = sparse_matrix_multiply(A, B, output_format='dense')
+print(result)
+```
 
-### macOS and Windows Compilation
+If this runs without errors, your installation is working correctly.
 
-We do not provide Makefiles for macOS or Windows due to the variability in development environments on these platforms. If you need to compile the library on these systems:
-
-- **macOS**: You may need to use Homebrew to install dependencies and manually compile the source files. Please refer to the source files and compilation flags in the Linux Makefiles for guidance.
-
-- **Windows**: Consider using Visual Studio or MinGW to compile the source files. The compilation flags and source file list in the Linux Makefiles can serve as a reference.
-
+For further assistance, please open an issue on our GitHub repository.
 If you successfully compile the library on macOS or Windows and would like to contribute build scripts, please open a pull request!
