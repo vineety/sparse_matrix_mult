@@ -106,7 +106,8 @@ class MatrixOpsLibrary:
         if self._lib is None:
             self._load_library()
         return self._lib
-
+    
+matrix_ops = MatrixOpsLibrary()
 
 # Function to convert csr_matrix to C struct
 def csr_to_sparsemat(csr):
@@ -216,17 +217,161 @@ def sparse_matrix_multiply(matrix_a, matrix_b, output_format='sparse', symmetric
         print(f"Error during matrix multiplication: {str(e)}")
         return None
 
-
 # Example script to call the library
 if __name__ == "__main__":
-    # User can pass a path to the library
-    library_dir = "/path/to/custom/library"
-    A_matrix = np.array([[1, 2], [3, 4]])
-    B_matrix = np.array([[5, 6], [7, 8]])
+    print("Sparse Matrix Multiplication Examples")
+    print("=====================================")
+
+    # Define demonstration matrices
+    A_matrix = np.array([
+        [0.64, 0.99, 0.89, 0.72],
+        [0,    0.67, 0.54, 0   ],
+        [0,    0.32, 0,    0   ],
+        [0.1,  0,    0,    0   ]
+    ])
+    
+    B_matrix = np.array([
+        [0.23, 0,    0,    0.51],
+        [0,    0.72, 0,    0   ],
+        [0,    0,    0.99, 0   ],
+        [0,    0.76, 0.87, 0.97]
+    ])
+
+    C_matrix = np.array([
+        [1, 2, 3, 4],
+        [0, 5, 6, 0],
+        [0, 0, 7, 8],
+        [9, 0, 0, 10]
+    ])
+
+    D_matrix = np.array([
+        [0.1, 0.2],
+        [0.3, 0.4],
+        [0.5, 0.6],
+        [0.7, 0.8]
+    ])
+
+    print("\nDemonstration Matrices:")
+    print("A_matrix:")
+    print(A_matrix)
+    print("\nB_matrix:")
+    print(B_matrix)
+    print("\nC_matrix:")
+    print(C_matrix)
+    print("\nD_matrix:")
+    print(D_matrix)
+
+    # Example 1: Using the installed package
+    print("\nExample 1: Using the installed package")
+    print("---------------------------------------")
 
     try:
-        result = sparse_matrix_multiply(A_matrix, B_matrix, output_format='dense', symmetric=False, imem_size=10, library_path=library_dir)
-        print(result)
+        # Sparse non-symmetric multiplication
+        result_sparse = sparse_matrix_multiply(A_matrix, B_matrix, output_format='sparse', symmetric=False)
+        print("Result of sparse non-symmetric A * B:")
+        print(result_sparse.toarray())
+
+        # Dense non-symmetric multiplication
+        result_dense = sparse_matrix_multiply(A_matrix, B_matrix, output_format='dense', symmetric=False)
+        print("\nResult of dense non-symmetric A * B:")
+        print(result_dense)
+
+        # Dense symmetric multiplication
+        result_sym_dense = sparse_matrix_multiply(C_matrix, C_matrix.T, output_format='dense', symmetric=True)
+        print("\nResult of dense symmetric C * C^T (upper triangular):")
+        print(np.triu(result_sym_dense))
+
+        # Sparse symmetric multiplication
+        result_sym_sparse = sparse_matrix_multiply(C_matrix, C_matrix.T, output_format='sparse', symmetric=True)
+        print("\nResult of sparse symmetric C * C^T (upper triangular):")
+        print(np.triu(result_sym_sparse.toarray()))
+
     except ValueError as e:
-        print(f"Error: {e}")
+        print(f"Error using installed package: {e}")
+
+    # Example 2: Using manually compiled library
+    print("\nExample 2: Using manually compiled library")
+    print("-------------------------------------------")
+    print("If you've manually compiled the library using the Makefile, you can use it as follows:")
+    
+    # Trying to load the library from common locations
+    library_paths = [
+        "./sparse_matrix_mult/lib",  # Current directory
+        "/usr/local/lib",            # Common system-wide location
+        "/usr/lib",                  # Another common system-wide location
+    ]
+    
+    lib = None
+    for path in library_paths:
+        try:
+            if platform.system() == "Darwin":
+                lib_name = "libsparse.dylib"
+            elif platform.system() == "Linux":
+                lib_name = "libsparse.so"
+            else:
+                lib_name = "libsparse.dll"
+            
+            full_path = os.path.join(path, lib_name)
+            if os.path.exists(full_path):
+                lib = ctypes.CDLL(full_path)
+                print(f"Successfully loaded library from: {full_path}")
+                break
+        except OSError:
+            continue
+
+    if lib is None:
+        print("Could not find the manually compiled library. Please ensure it's in one of the searched locations.")
+    else:
+        # Define the function prototypes
+        lib.sparse_nosym.argtypes = [ctypes.POINTER(SparseMat), ctypes.POINTER(SparseMat),
+                                     ctypes.POINTER(SparseMat), ctypes.c_int]
+        lib.sparse_nosym.restype = None
+
+        lib.sparse_sym.argtypes = [ctypes.POINTER(SparseMat), ctypes.POINTER(SparseMat),
+                                   ctypes.POINTER(SparseMat), ctypes.c_int]
+        lib.sparse_sym.restype = None
+
+        lib.dense_nosym.argtypes = [ctypes.POINTER(SparseMat), ctypes.POINTER(SparseMat), ctypes.POINTER(DArray)]
+        lib.dense_nosym.restype = None
+
+        # Convert numpy arrays to SparseMat structures
+        spmat_A = csr_to_sparsemat(csr_matrix(A_matrix))
+        spmat_B = csr_to_sparsemat(csr_matrix(B_matrix))
+        spmat_C = csr_to_sparsemat(csr_matrix(C_matrix))
+
+        # Sparse non-symmetric multiplication
+        result_ptr_sparse = lib.create_sparsemat(A_matrix.shape[0], B_matrix.shape[1], A_matrix.shape[0] * B_matrix.shape[1])
+        lib.sparse_nosym(ctypes.byref(spmat_A), ctypes.byref(spmat_B), result_ptr_sparse, ctypes.c_int(10))
+        result_sparse = sparsemat_to_csr(result_ptr_sparse).toarray()
+
+        print("Result of sparse non-symmetric A * B using manually compiled library:")
+        print(result_sparse)
+
+        # Dense non-symmetric multiplication
+        result_ptr_dense = lib.create_darray(A_matrix.shape[0], B_matrix.shape[1])
+        lib.dense_nosym(ctypes.byref(spmat_A), ctypes.byref(spmat_B), result_ptr_dense)
+        result_dense = darray_to_numpy(result_ptr_dense)
+
+        print("\nResult of dense non-symmetric A * B using manually compiled library:")
+        print(result_dense)
+
+        # Sparse symmetric multiplication
+        result_ptr_sym_sparse = lib.create_sparsemat(C_matrix.shape[0], C_matrix.shape[0], C_matrix.shape[0] * C_matrix.shape[0])
+        lib.sparse_sym(ctypes.byref(spmat_C), ctypes.byref(spmat_C), result_ptr_sym_sparse, ctypes.c_int(10))
+        result_sym_sparse = sparsemat_to_csr(result_ptr_sym_sparse).toarray()
+
+        print("\nResult of sparse symmetric C * C^T using manually compiled library (upper triangular):")
+        print(np.triu(result_sym_sparse))
+
+        # Clean up
+        lib.destroy_sparsemat(result_ptr_sparse)
+        lib.destroy_sparsemat(result_ptr_sym_sparse)
+        lib.destroy_darray(result_ptr_dense)
+
+    print("\nNote: If you're having trouble with the installed package, you can:")
+    print("1. Compile the library manually using the provided Makefile:")
+    print("   - For Mac: make -f Makefile.mac")
+    print("   - For Linux: make -f Makefile.linux")
+    print("2. Ensure the compiled library is in one of the searched locations.")
+    print("3. Run this script to use the manually compiled library.")
 
