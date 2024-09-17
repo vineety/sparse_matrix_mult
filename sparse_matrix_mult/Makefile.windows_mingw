@@ -1,0 +1,73 @@
+# Set the compiler to MinGW's g++
+# Open a command prompt or terminal with MinGW configured in the environment (with g++ in the PATH).
+# Navigate to the project directory containing the Makefile.
+# Run the following command to build the DLL:
+# mingw32-make -f Makefile.windows_mingw
+CXX := g++
+
+# Compiler flags
+# -Wall: enable all compiler warnings
+# -O3: optimization level 3 for performance
+# -fPIC: position-independent code (not necessary on Windows, but kept for compatibility)
+# -std=c++11: use C++11 standard
+CXXFLAGS := -Wall -O3 -std=c++11
+
+# Linker flags
+# -shared: build a shared library (DLL on Windows)
+LDFLAGS := -shared
+
+# Include directory (for headers)
+INCLUDES := -I./include
+
+# Libraries to link (none by default)
+LIBS :=
+
+# Source and object directories
+SRC_DIR := src
+OBJ_DIR := obj
+LIB_DIR := sparse_matrix_mult/lib
+
+# Find all source files in the src directory
+SOURCES := $(wildcard $(SRC_DIR)/*.cpp)
+
+# Convert source files to object files
+OBJECTS := $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR)/%.o,$(SOURCES))
+
+# Output DLL file
+LIBRARY := $(LIB_DIR)/libsparse.dll
+
+# Check if OpenMP is available with MinGW
+OPENMP_TEST := $(shell $(CXX) -fopenmp -dM -E - < /dev/null 2>&1 | grep -c OpenMP)
+
+ifeq ($(OPENMP_TEST),0)
+    $(info OpenMP not available. Compiling without OpenMP support.)
+else
+    $(info OpenMP is available. Compiling with OpenMP support.)
+    CXXFLAGS += -fopenmp
+    LIBS += -lgomp
+endif
+
+# Default target
+.PHONY: all clean
+
+all: $(LIBRARY)
+
+# Compile the shared library (DLL) from object files
+$(LIBRARY): $(OBJECTS) | $(LIB_DIR)
+	$(CXX) $(LDFLAGS) $^ -o $@ $(LIBS)
+
+# Compile each .cpp source file into an object file (.o)
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp | $(OBJ_DIR)
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
+
+# Create object and library directories if they don't exist
+$(OBJ_DIR) $(LIB_DIR):
+	mkdir -p $@
+
+# Clean target to remove compiled files
+clean:
+	rm -rf $(OBJ_DIR) $(LIB_DIR)
+
+# For debugging: print the value of a variable
+print-%:
+	@echo $* = $($*)
