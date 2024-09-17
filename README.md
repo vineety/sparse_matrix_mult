@@ -78,13 +78,13 @@ make -f Makefile.mac
 
 #### Linux
 ```
-make
+make -f Makefile.linux
 ```
 
 #### Windows
 Windows users should prefer the setup.py method. If using Make is necessary, ensure MinGW-w64 is installed and use:
 ```
-mingw32-make
+mingw32-make make -f Makefile.windows_mingw
 ```
 
 ### Troubleshooting
