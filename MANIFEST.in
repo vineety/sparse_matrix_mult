@@ -1,0 +1,8 @@
+include README.md
+include requirements.txt
+include src/Makefile.linux
+include src/makefile.linux_cross_compile
+recursive-include sparse_matrix_mult/lib *
+recursive-include include *
+recursive-include src *
+recursive-include tests *

@@ -1,0 +1,38 @@
+# Core dependencies
+numpy>=1.18.0,<2.0.0  # Essential for array operations
+scipy>=1.4.0,<2.0.0   # Used for sparse matrix operations
+
+# Development and testing dependencies
+pytest>=6.2.5,<7.0.0  # Testing framework
+pytest-cov>=2.12.0,<3.0.0  # Test coverage plugin for pytest
+flake8>=3.9.0,<4.0.0  # Linting
+black>=21.5b1,<22.0.0  # Code formatting
+mypy>=0.812,<1.0.0  # Static type checking
+
+# Build and distribution dependencies
+setuptools>=45.0.0,<56.0.0  # For building the package
+wheel>=0.36.2,<0.37.0  # For creating wheel distributions
+
+# Documentation
+Sphinx>=3.5.4,<4.0.0  # For generating documentation
+sphinx-rtd-theme>=0.5.2,<0.6.0  # Read the Docs theme for Sphinx
+
+# Optional dependencies for advanced features
+numba>=0.53.1,<0.54.0  # For JIT compilation (optional, can significantly speed up some operations)
+cython>=0.29.23,<0.30.0  # For compiling Python code to C (optional, can be used for further optimizations)
+
+# Compatibility for older Python versions
+typing_extensions>=3.7.4,<4.0.0; python_version < "3.8"  # For type hinting in older Python versions
+
+# Jupyter notebook support (optional, for interactive development and examples)
+jupyter>=1.0.0,<2.0.0
+ipython>=7.23.1,<8.0.0
+
+# Performance profiling (optional, for identifying bottlenecks)
+line_profiler>=3.1.0,<4.0.0
+memory_profiler>=0.58.0,<0.59.0
+
+# Visualization (optional, for plotting results)
+matplotlib>=3.4.2,<4.0.0
+seaborn>=0.11.1,<0.12.0
+

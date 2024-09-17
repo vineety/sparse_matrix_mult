@@ -1,0 +1,54 @@
+CXX := clang++\
+CXXFLAGS := -Wall -O3 -fPIC -std=c++11\
+LDFLAGS := -shared\
+INCLUDES := -I./include\
+LIBS :=\
+\
+SRC_DIR := src\
+OBJ_DIR := obj\
+LIB_DIR := sparse_matrix_mult/lib\
+\
+SOURCES := $(wildcard $(SRC_DIR)/*.cpp)\
+OBJECTS := $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR)/%.o,$(SOURCES))\
+\
+UNAME_M := $(shell uname -m)\
+ifeq ($(UNAME_M),arm64)\
+    ARCH := arm64\
+    TARGET := -target arm64-apple-macos11\
+else\
+    ARCH := x86_64\
+    TARGET := -target x86_64-apple-macos10.12\
+endif\
+\
+LIBRARY := $(LIB_DIR)/libsparse_$(ARCH).dylib\
+\
+# Check for OpenMP support\
+OPENMP_TEST := $(shell $(CXX) -Xpreprocessor -fopenmp -dM -E - < /dev/null 2>&1 | grep -c OpenMP)\
+\
+ifeq ($(OPENMP_TEST),0)\
+    $(info OpenMP not available. Compiling without OpenMP support.)\
+else\
+    $(info OpenMP is available. Compiling with OpenMP support.)\
+    CXXFLAGS += -Xpreprocessor -fopenmp\
+    INCLUDES += -I/usr/local/opt/libomp/include\
+    LIBS += -L/usr/local/opt/libomp/lib -lomp\
+endif\
+\
+.PHONY: all clean\
+\
+all: $(LIBRARY)\
+\
+$(LIBRARY): $(OBJECTS) | $(LIB_DIR)\
+	$(CXX) $(LDFLAGS) $(TARGET) -arch $(ARCH) $^ -o $@ $(LIBS)\
+\
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp | $(OBJ_DIR)\
+	$(CXX) $(CXXFLAGS) $(INCLUDES) $(TARGET) -arch $(ARCH) -c $< -o $@\
+\
+$(OBJ_DIR) $(LIB_DIR):\
+	mkdir -p $@\
+\
+clean:\
+	rm -rf $(OBJ_DIR) $(LIB_DIR)\
+\
+print-%:\
+	@echo $* = $($*)}

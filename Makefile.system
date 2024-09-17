@@ -1,0 +1,94 @@
+# Makefile for sparse matrix multiplication library for Linux and macOS
+SOURCEDIR := .
+IDIR := $(SOURCEDIR)/include
+LIBPATH := $(SOURCEDIR)/sparse_matrix_mult/lib
+SRCFILES := $(wildcard $(SOURCEDIR)/src/*.cpp)
+
+# Common flags
+COMMON_FLAGS := -I$(IDIR) -Wall -O3 -fPIC -fvisibility=default -ftree-vectorize -funroll-loops -ffast-math -std=c++11
+
+# Detect the operating system and architecture
+UNAME_S := $(shell uname -s)
+UNAME_M := $(shell uname -m)
+
+# Check for OpenMP availability
+ifeq ($(UNAME_S),Darwin)
+    # macOS
+    OPENMP_AVAILABLE := $(shell echo "\#include <omp.h>" | g++ -E -Xpreprocessor -fopenmp - > /dev/null 2>&1 && echo "yes" || echo "no")
+else
+    # Linux
+    OPENMP_AVAILABLE := $(shell echo "\#include <omp.h>" | g++ -E -fopenmp - > /dev/null 2>&1 && echo "yes" || echo "no")
+endif
+
+# Use OpenMP if available
+ifeq ($(OPENMP_AVAILABLE),yes)
+    ifeq ($(UNAME_S),Darwin)
+        COMMON_FLAGS := $(COMMON_FLAGS) -Xpreprocessor -fopenmp -DUSE_OPENMP
+        LDFLAGS := -shared -lomp
+    else
+        COMMON_FLAGS := $(COMMON_FLAGS) -fopenmp -DUSE_OPENMP
+        LDFLAGS := -shared -static-libstdc++ -static-libgcc -lpthread -lm -lgomp
+    endif
+    OPENMP_MESSAGE := "OpenMP is available and enabled."
+else
+    ifeq ($(UNAME_S),Darwin)
+        LDFLAGS := -shared
+    else
+        LDFLAGS := -shared -static-libstdc++ -static-libgcc -lpthread -lm
+    endif
+    OPENMP_MESSAGE := "OpenMP is not available, building without OpenMP."
+endif
+
+# Names for the generated libraries
+ifeq ($(UNAME_S),Darwin)
+    ifeq ($(UNAME_M),arm64)
+        LIBNAME := libsparse_arm64.dylib
+        ARCH_MESSAGE := "Architecture detected: ARM64 (macOS)."
+    else
+        LIBNAME := libsparse_x64.dylib
+        ARCH_MESSAGE := "Architecture detected: x64 (macOS)."
+    endif
+else
+    ifeq ($(UNAME_M),aarch64)
+        LIBNAME := libsparse_arm64.so
+        ARCH_MESSAGE := "Architecture detected: ARM64 (Linux)."
+    else
+        LIBNAME := libsparse_x64.so
+        ARCH_MESSAGE := "Architecture detected: x64 (Linux)."
+    endif
+endif
+
+# Set architecture-specific flags
+ifeq ($(UNAME_M),x86_64)
+    CXXFLAGS := $(COMMON_FLAGS) -march=x86-64 -mtune=generic
+else ifeq ($(UNAME_M),aarch64)
+    CXXFLAGS := $(COMMON_FLAGS) -march=armv8-a -mtune=generic
+else ifeq ($(UNAME_M),arm64)
+    CXXFLAGS := $(COMMON_FLAGS) -march=armv8-a -mtune=generic
+else
+    $(error Unsupported architecture: $(UNAME_M))
+endif
+
+# Build the shared library
+all: $(LIBPATH)/$(LIBNAME)
+
+$(LIBPATH)/$(LIBNAME): $(LIBPATH)
+	@echo $(ARCH_MESSAGE)
+	@echo $(OPENMP_MESSAGE)
+	$(CXX) $(CXXFLAGS) $(SRCFILES) $(LDFLAGS) -o $@
+	@echo "Generated shared library: $@"
+
+# Ensure the output directory exists
+$(LIBPATH):
+	mkdir -p $(LIBPATH)
+
+.PHONY: clean
+clean:
+	rm -f $(LIBPATH)/$(LIBNAME)
+
+.PHONY: help
+help:
+	@echo "This Makefile detects the system and architecture and compiles with OpenMP if supported."
+	@echo "It handles macOS and Linux compilation with or without OpenMP."
+
+
