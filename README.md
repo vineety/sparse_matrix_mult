@@ -92,7 +92,7 @@ mingw32-make make -f Makefile.windows_mingw
 - **Build Tools**: 
   - macOS: Install Xcode Command Line Tools (`xcode-select --install`)
   - Linux: Install GCC and Make (`sudo apt-get install build-essential` on Ubuntu)
-  - Windows: Install Visual C++ build tools or MinGW-w64
+  - Windows: Install MinGW-w64
 
 - **Python Dependencies**:
   ```
