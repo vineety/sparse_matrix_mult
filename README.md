@@ -145,8 +145,25 @@ from sparse_matrix_mult import sparse_matrix_multiply
         [0.7, 0.8]
     ])
 
-result = sparse_matrix_multiply(A, B, output_format='dense')
-print(result)
+# Sparse non-symmetric multiplication
+result_sparse = sparse_matrix_multiply(A_matrix, B_matrix, output_format='sparse', symmetric=False)
+print("Result of sparse non-symmetric A * B:")
+print(result_sparse.toarray())
+
+# Dense non-symmetric multiplication
+result_dense = sparse_matrix_multiply(A_matrix, B_matrix, output_format='dense', symmetric=False)
+print("\nResult of dense non-symmetric A * B:")
+print(result_dense)
+
+# Dense symmetric multiplication
+result_sym_dense = sparse_matrix_multiply(C_matrix, C_matrix.T, output_format='dense', symmetric=True)
+print("\nResult of dense symmetric C * C^T (upper triangular):")
+print(np.triu(result_sym_dense))
+
+# Sparse symmetric multiplication
+result_sym_sparse = sparse_matrix_multiply(C_matrix, C_matrix.T, output_format='sparse', symmetric=True)
+print("\nResult of sparse symmetric C * C^T (upper triangular):")
+print(np.triu(result_sym_sparse.toarray()))
 ```
 
 If this runs without errors, your installation is working correctly.
