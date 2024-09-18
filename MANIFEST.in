@@ -1,7 +1,8 @@
 include README.md
 include requirements.txt
-include src/Makefile.linux
-include src/makefile.linux_cross_compile
+include sparse_matrix_mult/Makefile.linux
+include sparse_matrix_mult/Makefile.mac
+include sparse_matrix_mult/Makefile.windows_mingw
 recursive-include sparse_matrix_mult/lib *
 recursive-include include *
 recursive-include src *
