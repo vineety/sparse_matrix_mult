@@ -1,72 +1,41 @@
-# Set the compiler to MinGW's g++
-# Open a command prompt or terminal with MinGW configured in the environment (with g++ in the PATH).
-# Navigate to the project directory containing the Makefile.
-# Run the following command to build the DLL:
-# mingw32-make -f Makefile.windows_mingw
+# Compiler and flags
 CXX := g++
-
-# Compiler flags
-# -Wall: enable all compiler warnings
-# -O3: optimization level 3 for performance
-# -fPIC: position-independent code (not necessary on Windows, but kept for compatibility)
-# -std=c++11: use C++11 standard
-CXXFLAGS := -Wall -O3 -std=c++11
-
-# Linker flags
-# -shared: build a shared library (DLL on Windows)
+CXXFLAGS := -Wall -O3 -std=c++11 -fopenmp
 LDFLAGS := -shared
+INCLUDES := -I"include"
+LIBS := -lgomp
 
-# Include directory (for headers)
-INCLUDES := -I./include
-
-# Libraries to link (none by default)
-LIBS :=
-
-# Source and object directories
+# Directories
 SRC_DIR := src
-OBJ_DIR := obj
-LIB_DIR := sparse_matrix_mult/lib
+LIB_DIR := sparse_matrix_mult\lib
 
-# Find all source files in the src directory
+# Source and object files
 SOURCES := $(wildcard $(SRC_DIR)/*.cpp)
+OBJECTS := $(SOURCES:.cpp=.o)
 
-# Convert source files to object files
-OBJECTS := $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR)/%.o,$(SOURCES))
+# Output library
+LIBRARY := $(LIB_DIR)\libsparse_x64.dll
 
-# Output DLL file
-LIBRARY := $(LIB_DIR)/libsparse.dll
-
-# Check if OpenMP is available with MinGW
-OPENMP_TEST := $(shell $(CXX) -fopenmp -dM -E - < /dev/null 2>&1 | grep -c OpenMP)
-
-ifeq ($(OPENMP_TEST),0)
-    $(info OpenMP not available. Compiling without OpenMP support.)
-else
-    $(info OpenMP is available. Compiling with OpenMP support.)
-    CXXFLAGS += -fopenmp
-    LIBS += -lgomp
-endif
-
-# Default target
+# Targets
 .PHONY: all clean
 
 all: $(LIBRARY)
+	@echo "Ensure you're running this script from the root directory."
+	@echo "Install MinGW from https://www.mingw-w64.org."
+	@echo "To set up environment variables on Windows:"
+	@echo "1. Right-click This PC or My Computer, and select Properties."
+	@echo "2. Click Advanced system settings → Environment Variables."
+	@echo "3. Under System Variables, find Path, select it, and click Edit."
+	@echo "4. Click New, and add the path to your MinGW bin folder (e.g., C:\\mingw-w64\\bin)."
+	@echo "5. Click OK to save the changes."
 
-# Compile the shared library (DLL) from object files
-$(LIBRARY): $(OBJECTS) | $(LIB_DIR)
-	$(CXX) $(LDFLAGS) $^ -o $@ $(LIBS)
+$(LIBRARY): $(SOURCES)
+	@if not exist $(LIB_DIR) mkdir $(LIB_DIR)
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -DSPARSE_LIB_EXPORTS $(LDFLAGS) -o $@ $^ $(LIBS)
 
-# Compile each .cpp source file into an object file (.o)
-$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp | $(OBJ_DIR)
-	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
-
-# Create object and library directories if they don't exist
-$(OBJ_DIR) $(LIB_DIR):
-	mkdir -p $@
-
-# Clean target to remove compiled files
 clean:
-	rm -rf $(OBJ_DIR) $(LIB_DIR)
+	@del /Q $(LIBRARY) 2>NUL
+	@for %%f in ($(SOURCES:.cpp=.o)) do @if exist %%f del /Q %%f
 
 # For debugging: print the value of a variable
 print-%:
