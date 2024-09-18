@@ -110,7 +110,7 @@ mingw32-make make -f Makefile.windows_mingw
   make
   ```
 
-### Verifying Installation
+### Verifying Installation and Example Use Cases
 
 ```python
 import numpy as np
@@ -166,7 +166,7 @@ print("\nResult of sparse symmetric C * C^T (upper triangular):")
 print(np.triu(result_sym_sparse.toarray()))
 ```
 
-If this runs without errors, your installation is working correctly.
+If this runs without errors, your installation is working correctly. An example script that contains these matrices "matrix_ops_script.py" is also included to test and compare results against numpy
 
 For further assistance, please open an issue on our GitHub repository.
 If you successfully compile the library on macOS or Windows and would like to contribute build scripts, please open a pull request!
