@@ -44,17 +44,28 @@ def mingw_install_instructions():
 
 class BuildSharedLibrary(build_ext):
     def run(self):
-        if platform.system() == "Darwin":
+        system = platform.system()
+        if system == "Darwin":
             architectures = self.get_macos_architectures()
-        else:
-            architectures = [platform.machine()]
+        elif system == "Windows":
+            architectures = self.get_windows_architectures()
+        else:  # Linux and others
+            architectures = self.get_linux_architectures()
         
         for arch in architectures:
             try:
                 self.try_compile_shared_lib(arch)
             except CompileError as e:
-                print(f"Error: Compilation failed on {platform.system()} for architecture {arch}.")
+                print(f"Error: Compilation failed on {system} for architecture {arch}.")
                 print(f"Details: {str(e)}")
+                print("Installation failed due to missing dependencies or compilation issues.")
+                print("Please consider using the platform-specific Makefile for manual installation:")
+                if system == "Windows":
+                    print("- For Windows, use the Makefile in the root directory with MinGW.")
+                elif system == "Darwin":
+                    print("- For macOS, use the Makefile in the source directory.")
+                else:
+                    print("- For Linux, use the Makefile in the source directory.")
                 if len(architectures) > 1:
                     print(f"Continuing with next architecture...")
                 else:
@@ -62,12 +73,25 @@ class BuildSharedLibrary(build_ext):
 
     def get_macos_architectures(self):
         architectures = []
-        # Check if arm64 is supported
         if subprocess.call(["sysctl", "-n", "hw.optional.arm64"]) == 0:
             architectures.append('arm64')
-        # x86_64 is always added as a fallback
         architectures.append('x86_64')
         return architectures
+
+    def get_windows_architectures(self):
+        if platform.machine().endswith('64'):
+            return ['x86_64']
+        else:
+            return ['x86']
+
+    def get_linux_architectures(self):
+        machine = platform.machine()
+        if machine == 'x86_64':
+            return ['x86_64']
+        elif machine.startswith('arm') or machine.startswith('aarch64'):
+            return ['arm64']
+        else:
+            return [machine]
 
     def try_compile_shared_lib(self, arch):
         print(f"Attempting to compile the shared library for {platform.system()} with architecture {arch}...")
@@ -75,13 +99,11 @@ class BuildSharedLibrary(build_ext):
         lib_extension = get_lib_extension()
         system = platform.system()
 
-        # Check if MinGW is available first on Windows
         if system == "Windows" and not is_mingw_available():
             mingw_install_instructions()
             raise CompileError("MinGW is not available. Please install MinGW for Windows.")
 
         compiler = self.get_compiler_command()
-
         source_dir = os.path.join(os.path.dirname(__file__), "src")
         include_dir = os.path.join(os.path.dirname(__file__), "include")
         output_lib = f"libsparse_{arch}.{lib_extension}"
@@ -89,7 +111,6 @@ class BuildSharedLibrary(build_ext):
 
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
-        # Check if OpenMP is available before adding OpenMP flags
         openmp_available = self.check_openmp_support(compiler)
 
         compile_cmd = self.get_compile_command(compiler, include_dir, output_path, source_dir, arch, openmp_available)
