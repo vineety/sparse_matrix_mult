@@ -6,6 +6,7 @@ This module defines classes and functions for efficient matrix operations,
 particularly for sparse matrices. It interfaces with a C library for
 performance-critical operations.
 """
+
 import ctypes
 import numpy as np
 from scipy.sparse import csr_matrix, isspmatrix_csr
@@ -14,35 +15,67 @@ import platform
 
 
 class SparseMat(ctypes.Structure):
+    """
+    @class SparseMat
+    @brief A structure representing a sparse matrix in CSR (Compressed Sparse Row) format.
+
+    This class defines a sparse matrix with attributes that store the number of non-zero elements,
+    dimensions of the matrix, row pointer, column index, and the values of non-zero elements.
+    """
     _fields_ = [
-        ("nzmax", ctypes.c_int),
-        ("rows", ctypes.c_int),
-        ("cols", ctypes.c_int),
-        ("rowPtr", ctypes.POINTER(ctypes.c_int)),
-        ("colInd", ctypes.POINTER(ctypes.c_int)),
-        ("values", ctypes.POINTER(ctypes.c_double))
+        ("nzmax", ctypes.c_int),  /**< Maximum number of non-zero entries in the matrix. */
+        ("rows", ctypes.c_int),   /**< Number of rows in the matrix. */
+        ("cols", ctypes.c_int),   /**< Number of columns in the matrix. */
+        ("rowPtr", ctypes.POINTER(ctypes.c_int)), /**< Pointer to the row pointer array. */
+        ("colInd", ctypes.POINTER(ctypes.c_int)), /**< Pointer to the column index array. */
+        ("values", ctypes.POINTER(ctypes.c_double)) /**< Pointer to the values of non-zero elements. */
     ]
 
 
 class DArray(ctypes.Structure):
+    """
+    @class DArray
+    @brief A structure representing a dense matrix in double precision format.
+
+    This class defines a dense matrix with attributes that store the number of rows,
+    columns, and the data in the form of a 2D array.
+    """
     _fields_ = [
-        ("array", ctypes.POINTER(ctypes.c_double)),
-        ("rows", ctypes.c_int),
-        ("cols", ctypes.c_int),
+        ("array", ctypes.POINTER(ctypes.c_double)), /**< Pointer to the array of matrix elements. */
+        ("rows", ctypes.c_int),  /**< Number of rows in the matrix. */
+        ("cols", ctypes.c_int),  /**< Number of columns in the matrix. */
     ]
 
 
 class MatrixOpsLibrary:
+    """
+    @class MatrixOpsLibrary
+    @brief Singleton class to load the C-based matrix operations library and set up function prototypes.
+
+    This class ensures that the C-based matrix operations library is loaded only once,
+    and provides a method to access the library. It also defines function prototypes for
+    the matrix operations exposed by the C library.
+    """
     _instance = None
     _lib = None
 
     def __new__(cls):
+        """
+        @brief Create a new instance of the MatrixOpsLibrary singleton or return the existing one.
+
+        @return MatrixOpsLibrary instance.
+        """
         if cls._instance is None:
             cls._instance = super(MatrixOpsLibrary, cls).__new__(cls)
             cls._instance._load_library()
         return cls._instance
 
     def _load_library(self):
+        """
+        @brief Load the C library based on the platform and architecture.
+        This method selects the correct shared library file (.so, .dylib, or .dll)
+        based on the operating system and processor architecture.
+        """
         if self._lib is not None:
             return
 
@@ -80,6 +113,9 @@ class MatrixOpsLibrary:
             raise OSError(f"Failed to load library: {lib_path}. Error: {e}")
 
     def _setup_function_prototypes(self):
+        """
+        @brief Set up the argument and return types for the matrix operations defined in the C library.
+        """
         self._lib.create_sparsemat.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int]
         self._lib.create_sparsemat.restype = ctypes.POINTER(SparseMat)
 
@@ -107,6 +143,11 @@ class MatrixOpsLibrary:
         self._lib.destroy_darray.restype = None
 
     def get_lib(self):
+        """
+        @brief Return the loaded C library.
+
+        @return C library instance.
+        """
         if self._lib is None:
             self._load_library()
         return self._lib
@@ -116,6 +157,12 @@ matrix_ops = MatrixOpsLibrary()
 
 
 def csr_to_sparsemat(csr):
+    """
+    @brief Convert a SciPy CSR matrix to a SparseMat structure for use with the C library.
+
+    @param csr SciPy CSR matrix.
+    @return SparseMat structure containing the CSR matrix data.
+    """
     lib = matrix_ops.get_lib()
     sparsemat = lib.create_sparsemat(csr.shape[0], csr.shape[1], csr.nnz).contents
     rowPtr = np.array(csr.indptr, dtype=np.int32)
@@ -128,6 +175,13 @@ def csr_to_sparsemat(csr):
 
 
 def sparsemat_to_csr(sparsemat_ptr, symmetric=False):
+    """
+    @brief Convert a SparseMat structure back to a SciPy CSR matrix.
+
+    @param sparsemat_ptr Pointer to a SparseMat structure.
+    @param symmetric Whether the matrix is symmetric.
+    @return SciPy CSR matrix equivalent of the SparseMat structure.
+    """
     if not sparsemat_ptr:
         raise ValueError("Invalid sparsemat_ptr: Null pointer")
 
@@ -142,27 +196,39 @@ def sparsemat_to_csr(sparsemat_ptr, symmetric=False):
     rowPtr = np.ctypeslib.as_array(sparsemat.rowPtr, shape=(rows + 1,)).copy()
     colInd = np.ctypeslib.as_array(sparsemat.colInd, shape=(nzmax,)).copy()
     values = np.ctypeslib.as_array(sparsemat.values, shape=(nzmax,)).copy()
- 
-  
+
     return csr_matrix((values, colInd, rowPtr), shape=(rows, cols))
 
 
 def darray_to_numpy(darray_ptr):
+    """
+    @brief Convert a DArray structure to a NumPy array.
+
+    @param darray_ptr Pointer to a DArray structure.
+    @return NumPy array equivalent of the DArray structure.
+    """
     darray = darray_ptr.contents
     numpy_array = np.ctypeslib.as_array(darray.array, shape=(darray.rows, darray.cols)).copy()
     return numpy_array
 
 
-def create_sparsemat():
-    return ctypes.pointer(SparseMat())
-
-
-def create_darray():
-    return ctypes.pointer(DArray())
-
-
 def sparse_matrix_multiply(matrix_a, matrix_b, output_format='sparse', symmetric=False, imem_size=None,
-                    use_triple_product=False, compute_full_matrix=None):
+                           use_triple_product=False, compute_full_matrix=None):
+    """
+    @brief Perform matrix multiplication of two sparse matrices.
+
+    This function multiplies two sparse matrices using either sparse, dense, or triple-product format.
+    
+    @param matrix_a First matrix (CSR format or NumPy array).
+    @param matrix_b Second matrix (CSR format or NumPy array).
+    @param output_format The format of the result ('sparse' or 'dense').
+    @param symmetric Whether the result matrix should be symmetric.
+    @param imem_size Intermediate memory size for calculations.
+    @param use_triple_product Whether to use the triple-product method for dense results.
+    @param compute_full_matrix Whether to compute the full matrix or only the upper triangular part.
+
+    @return Resulting matrix (CSR format or NumPy array).
+    """
     lib = matrix_ops.get_lib()
     
     # Handle imem_size
@@ -264,20 +330,6 @@ def sparse_matrix_multiply(matrix_a, matrix_b, output_format='sparse', symmetric
         else:
             return np.zeros((matrix_a.shape[0], matrix_b.shape[1]))
 
-
-# Example usage
-if __name__ == "__main__":
-    A_matrix = np.array([[1, 2], [3, 4]])
-    B_matrix = np.array([[5, 6], [7, 8]])
-
-    try:
-        result = sparse_matrix_multiply(A_matrix, B_matrix, output_format='dense', symmetric=False, imem_size=10)
-        print(result)
-
-        # This should raise an error due to non-square result for symmetric output
-        result = sparse_matrix_multiply(A_matrix, B_matrix, output_format='dense', symmetric=True)
-    except ValueError as e:
-        print(f"Error: {e}")
 
 
 
