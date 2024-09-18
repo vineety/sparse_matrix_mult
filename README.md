@@ -51,7 +51,7 @@ This work was supported by funds from National Science Foundation under Grant No
 
 ## Contact
 For questions or support, please contact:
-Vineet Yadav (vineet.yadav@jpl.nasa.gov)
+Vineet Yadav (yadavvineet@gmail.com)
 
 ## Installation Instructions
 
