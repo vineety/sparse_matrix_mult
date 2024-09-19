@@ -78,10 +78,10 @@ class MatrixOpsLibrary:
         """
         if self._lib is not None:
             return
-
+    
         system = platform.system().lower()
         machine = platform.machine().lower()
-
+    
         if system == 'linux':
             extension = 'so'
         elif system == 'darwin':
@@ -90,21 +90,21 @@ class MatrixOpsLibrary:
             extension = 'dll'
         else:
             raise OSError(f"Unsupported operating system: {system}")
-
+    
         if 'arm' in machine or 'aarch64' in machine:
             arch = 'arm64'
         elif 'x86_64' in machine or 'amd64' in machine:
-            arch = 'x64'
+            arch = 'x86_64'  # Changed from 'x64' to 'x86_64'
         else:
             raise OSError(f"Unsupported architecture: {machine}")
-
+    
         lib_name = f'libsparse_{arch}.{extension}'
         package_dir = os.path.dirname(os.path.abspath(__file__))
         lib_path = os.path.join(package_dir, 'lib', lib_name)
-
+    
         if not os.path.exists(lib_path):
             raise OSError(f"Library not found: {lib_path}")
-
+    
         try:
             self._lib = ctypes.CDLL(lib_path)
             print(f"Successfully loaded library from: {lib_path}")
@@ -357,7 +357,6 @@ def sparse_matrix_multiply(matrix_a, matrix_b, output_format='sparse', symmetric
             return csr_matrix((matrix_a.shape[0], matrix_b.shape[1]))
         else:
             return np.zeros((matrix_a.shape[0], matrix_b.shape[1]))
-
 
 
 
