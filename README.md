@@ -113,60 +113,9 @@ mingw32-make make -f Makefile.windows_mingw
 ### Verifying Installation and Example Use Cases
 
 ```python
-import numpy as np
-from sparse_matrix_mult import sparse_matrix_multiply
-
- # Define demonstration matrices
-    A_matrix = np.array([
-        [0.64, 0.99, 0.89, 0.72],
-        [0,    0.67, 0.54, 0   ],
-        [0,    0.32, 0,    0   ],
-        [0.1,  0,    0,    0   ]
-    ])
-    
-    B_matrix = np.array([
-        [0.23, 0,    0,    0.51],
-        [0,    0.72, 0,    0   ],
-        [0,    0,    0.99, 0   ],
-        [0,    0.76, 0.87, 0.97]
-    ])
-
-    C_matrix = np.array([
-        [1, 2, 3, 4],
-        [0, 5, 6, 0],
-        [0, 0, 7, 8],
-        [9, 0, 0, 10]
-    ])
-
-    D_matrix = np.array([
-        [0.1, 0.2],
-        [0.3, 0.4],
-        [0.5, 0.6],
-        [0.7, 0.8]
-    ])
-
-# Sparse non-symmetric multiplication
-result_sparse = sparse_matrix_multiply(A_matrix, B_matrix, output_format='sparse', symmetric=False)
-print("Result of sparse non-symmetric A * B:")
-print(result_sparse.toarray())
-
-# Dense non-symmetric multiplication
-result_dense = sparse_matrix_multiply(A_matrix, B_matrix, output_format='dense', symmetric=False)
-print("\nResult of dense non-symmetric A * B:")
-print(result_dense)
-
-# Dense symmetric multiplication
-result_sym_dense = sparse_matrix_multiply(C_matrix, C_matrix.T, output_format='dense', symmetric=True)
-print("\nResult of dense symmetric C * C^T (upper triangular):")
-print(np.triu(result_sym_dense))
-
-# Sparse symmetric multiplication
-result_sym_sparse = sparse_matrix_multiply(C_matrix, C_matrix.T, output_format='sparse', symmetric=True)
-print("\nResult of sparse symmetric C * C^T (upper triangular):")
-print(np.triu(result_sym_sparse.toarray()))
-```
-
-If this runs without errors, your installation is working correctly. An example script that contains these matrices "matrix_ops_script.py" is also included to test and compare results against numpy
+An example script  "matrix_ops_script.py" is also included to test to compare results against numpy and to demonstrate how to use the code. For ideal performance compile with openmp
 
 For further assistance, please open an issue on our GitHub repository.
 If you successfully compile the library on macOS or Windows and would like to contribute build scripts, please open a pull request!
+```
+
