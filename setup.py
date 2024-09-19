@@ -1,3 +1,11 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Sep 19 14:48:30 2024
+
+@author: vineet
+"""
+
 import os
 import platform
 import subprocess
@@ -5,75 +13,79 @@ from setuptools import setup, find_packages, Extension
 from setuptools.command.build_ext import build_ext
 from distutils.errors import CompileError, DistutilsError
 
-# Function to get the shared library extension based on the operating system (e.g., .so, .dylib, .dll)
-def get_lib_extension():
-    if platform.system() == "Darwin":  # macOS uses .dylib for shared libraries
-        return "dylib"
-    elif platform.system() == "Windows":  # Windows uses .dll
-        return "dll"
-    else:  # Default to .so for Linux and other Unix-like systems
-        return "so"
+# Global variable to track OpenMP support
+openmp_supported = False
 
-# Check if MinGW is available on Windows
-def is_mingw_available():
-    try:
-        # Test if 'mingw32-make' is accessible from the system's PATH
-        subprocess.check_output(['mingw32-make', '--version'], stderr=subprocess.STDOUT)
-        return True
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return False
-
-# Provide instructions for MinGW installation on Windows
-def mingw_install_instructions():
-    """Prints detailed instructions to install MinGW and configure environment variables for Windows users."""
-    print("\nMinGW (Minimalist GNU for Windows) is required for compilation on Windows.")
-    print("Please download and install MinGW from the following URL:")
-    print("https://www.mingw-w64.org/downloads/")
-    print("\nAfter installation, add the MinGW `bin` directory to your PATH environment variable.")
-    print("Example path (may vary depending on installation directory):")
-    print("C:\\MinGW\\bin")
-    print("\nTo add MinGW to your PATH environment variable:")
-    print("1. Right-click on 'This PC' or 'My Computer' and select 'Properties'.")
-    print("2. Click 'Advanced system settings' and then click 'Environment Variables'.")
-    print("3. Under 'System variables', find the 'Path' variable, select it, and click 'Edit'.")
-    print("4. Add the path to the MinGW `bin` directory (e.g., C:\\MinGW\\bin).")
-    print("5. Click 'OK' to save and close all windows.")
-    print("\nAfter setting the PATH, restart your terminal or command prompt and try the installation again.\n")
-
-# Custom build class to compile shared libraries
 class BuildSharedLibrary(build_ext):
+    
     def run(self):
+        global openmp_supported
         system = platform.system()
-        if system == "Darwin":  # For macOS, get supported architectures
-            architectures = self.get_macos_architectures()
-        elif system == "Windows":  # For Windows, get the appropriate architecture (x86 or x86_64)
-            architectures = self.get_windows_architectures()
-        else:  # For Linux, detect the architecture (e.g., x86_64, ARM)
-            architectures = self.get_linux_architectures()
-        
-        # Attempt to compile for each architecture
+
+        if system == "Windows":
+            self.build_windows()
+        else:
+            architectures = self.get_macos_architectures() if system == "Darwin" else self.get_linux_architectures()
+            self.build_unix(system, architectures)
+
+        # Print OpenMP support status at the end of the build process
+        if openmp_supported:
+            print("\nInstallation completed with OpenMP support.")
+            print("Your library will use parallel processing capabilities where available.")
+        else:
+            print("\nInstallation completed without OpenMP support.")
+            print("Your library will run in single-threaded mode.")
+
+    def build_unix(self, system, architectures):
         for arch in architectures:
             try:
                 self.try_compile_shared_lib(arch)
             except CompileError as e:
-                # If compilation fails, provide instructions for using the platform-specific Makefile
                 print(f"Error: Compilation failed on {system} for architecture {arch}.")
                 print(f"Details: {str(e)}")
                 print("Installation failed due to missing dependencies or compilation issues.")
                 print("Please consider using the platform-specific Makefile for manual installation:")
-                if system == "Windows":
-                    print("- For Windows, use the Makefile in the root directory with MinGW called as Makefile.windows_mingw.")
-                elif system == "Darwin":
-                    print("- For macOS, use the Makefile in the root directory called Makefile.mac.")
-                else:
-                    print("- For Linux, use the Makefile in the root directory called Makefile.linux.")
-                # If multiple architectures are supported, continue with the next one
+                print(f"- For {system}, use the Makefile in the root directory.")
+                
                 if len(architectures) > 1:
-                    print(f"Continuing with next architecture...")
+                    print("Continuing with next architecture...")
                 else:
                     raise DistutilsError("Failed to build the shared library.")
+            
+    def build_windows(self):
+        global openmp_supported
+        print("Building for Windows...")
+        
+        # Compiler settings for MinGW (assuming it's installed via Anaconda)
+        cxx = "g++"
+        cxxflags = ["-Wall", "-O3", "-shared", "-std=c++11"]
+        includes = ["-I./include"]
+        
+        # Directories
+        src_dir = "src"
+        lib_dir = os.path.join("sparse_matrix_mult", "lib")
+        
+        # Output library (use .pyd for Windows Python extension)
+        library = os.path.join(lib_dir, f"libsparse_{platform.machine()}.pyd")
+        
+        # Source files
+        sources = [os.path.join(src_dir, f) for f in os.listdir(src_dir) if f.endswith('.cpp')]
+        
+        # Create lib directory
+        os.makedirs(lib_dir, exist_ok=True)
+        
+        # OpenMP check
+        if self.check_openmp_support(cxx):
+            print("OpenMP is available. Compiling with OpenMP support.")
+            cxxflags.append("-fopenmp")
+            openmp_supported = True
+        else:
+            print("OpenMP not available. Compiling without OpenMP support.")
+        
+        # Compile and link in one step
+        cmd = [cxx] + cxxflags + includes + sources + ["-o", library]
+        self.execute_command(cmd, "compiling and linking library")
 
-    # Helper function to get supported architectures for macOS (e.g., arm64, x86_64)
     def get_macos_architectures(self):
         architectures = []
         if subprocess.call(["sysctl", "-n", "hw.optional.arm64"]) == 0:  # Check if arm64 is supported
@@ -81,14 +93,6 @@ class BuildSharedLibrary(build_ext):
         architectures.append('x86_64')  # Always include x86_64 as fallback
         return architectures
 
-    # Helper function to determine the architecture for Windows (either x86 or x86_64)
-    def get_windows_architectures(self):
-        if platform.machine().endswith('64'):
-            return ['x86_64']
-        else:
-            return ['x86']
-
-    # Helper function to determine architecture for Linux (e.g., x86_64, arm64)
     def get_linux_architectures(self):
         machine = platform.machine()
         if machine == 'x86_64':
@@ -98,152 +102,115 @@ class BuildSharedLibrary(build_ext):
         else:
             return [machine]
 
-    # Function to compile shared library for the specified architecture
     def try_compile_shared_lib(self, arch):
+        global openmp_supported
         print(f"Attempting to compile the shared library for {platform.system()} with architecture {arch}...")
 
-        lib_extension = get_lib_extension()  # Get the correct file extension for shared libraries
-        system = platform.system()
-
-        # On Windows, check for MinGW before proceeding with compilation
-        if system == "Windows" and not is_mingw_available():
-            mingw_install_instructions()  # Provide MinGW installation instructions
-            raise CompileError("MinGW is not available. Please install MinGW for Windows.")
-
-        compiler = self.get_compiler_command()  # Determine the appropriate compiler
-        source_dir = os.path.join(os.path.dirname(__file__), "src")
-        include_dir = os.path.join(os.path.dirname(__file__), "include")
-        output_lib = f"libsparse_{arch}.{lib_extension}"  # Set output library file name
-        output_path = os.path.join("sparse_matrix_mult", "lib", output_lib)
-
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)  # Ensure output directories exist
-
-        openmp_available = self.check_openmp_support(compiler)  # Check if OpenMP is available
-
-        compile_cmd = self.get_compile_command(compiler, include_dir, output_path, source_dir, arch, openmp_available)
-
-        # Execute the compilation command and handle errors
-        try:
-            print("Compilation command:", ' '.join(compile_cmd))
-            if openmp_available:
-                print("Compiling with OpenMP support...")
-            else:
-                print("Compiling without OpenMP support...")
-            result = subprocess.run(compile_cmd, check=True, capture_output=True, text=True)
-            print(f"Successfully compiled shared library: {output_path}")
-            print("Compiler output:", result.stdout)
-        except subprocess.CalledProcessError as e:
-            print(f"Failed to compile shared library. Error code: {e.returncode}")
-            print("Compiler stderr:", e.stderr)
-            print("Compiler stdout:", e.stdout)
-            raise CompileError(f"Failed to compile shared library: {e}")
-
-    # Get the appropriate compiler based on the platform
-    def get_compiler_command(self):
-        if platform.system() == "Darwin":
-            return "clang++"  # Use clang++ for macOS
-        elif platform.system() == "Windows":
-            return "g++"  # Use g++ (MinGW) for Windows
+        # Compiler settings
+        cxx = "g++"
+        cxxflags = ["-Wall", "-O3", "-fPIC", "-std=c++11"]
+        ldflags = ["-shared"]
+        includes = ["-I./include"]
+        
+        # Directories
+        src_dir = "src"
+        obj_dir = "obj"
+        lib_dir = "sparse_matrix_mult/lib"
+        
+        # Output library
+        library = os.path.join(lib_dir, f"libsparse_{arch}.so")
+        
+        # Source files
+        sources = [f for f in os.listdir(src_dir) if f.endswith('.cpp')]
+        objects = [os.path.join(obj_dir, f.replace('.cpp', '.o')) for f in sources]
+        
+        # Create obj directory
+        os.makedirs(obj_dir, exist_ok=True)
+        
+        # OpenMP check
+        if self.check_openmp_support(cxx):
+            print("OpenMP is available. Compiling with OpenMP support.")
+            cxxflags.append("-fopenmp")
+            ldflags.append("-fopenmp")
+            openmp_supported = True
         else:
-            return "g++"  # Use g++ for Linux
+            print("OpenMP not available. Compiling without OpenMP support.")
+        
+        # Compile object files
+        for source, obj in zip(sources, objects):
+            cmd = [cxx] + cxxflags + includes + ["-c", os.path.join(src_dir, source), "-o", obj]
+            self.execute_command(cmd, f"compiling {source}")
+        
+        # Link shared library
+        os.makedirs(lib_dir, exist_ok=True)  # Ensure lib directory exists
+        cmd = [cxx] + ldflags + objects + ["-o", library]
+        self.execute_command(cmd, "linking shared library")
 
-        # Construct the full compilation command
-    def get_compile_command(self, compiler, include_dir, output_path, source_dir, arch, openmp_available):
-        # List of source files for compilation
-        source_files = [
-            os.path.join(source_dir, "memfunctions.cpp"),
-            os.path.join(source_dir, "sparse_sparse_dense.cpp"),
-            os.path.join(source_dir, "sparse_sparse_sparse.cpp"),
-            os.path.join(source_dir, "sparsework.cpp"),
-            os.path.join(source_dir, "workdivision.cpp"),
-        ]
-
-        omp_include, omp_lib = self.get_openmp_paths(arch)  # Get OpenMP include/lib paths if available
-
-        # Common compilation flags
-        common_flags = [
-            f"-I{include_dir}",
-            "-Wall", "-O3", "-fPIC",
-            "-shared",
-            "-o", output_path,
-        ]
-
-        # Add OpenMP flags if available
-        if openmp_available:
-            common_flags.extend([
-                f"-I{omp_include}",
-                "-Xpreprocessor", "-fopenmp",
-                f"-L{omp_lib}",
-                "-lomp",
-            ])
-
-        # Handle macOS-specific flags
-        if platform.system() == "Darwin":
-            compile_cmd = [
-                compiler,
-                *source_files,
-                f"-arch", arch,
-                *common_flags,
-            ]
-            if arch == 'arm64':
-                compile_cmd.extend(["-target", "arm64-apple-macos11"])
-            elif arch == 'x86_64':
-                compile_cmd.extend(["-target", "x86_64-apple-macos10.12"])
-        else:
-            compile_cmd = [
-                compiler,
-                *source_files,
-                *common_flags,
-            ]
-
-        return compile_cmd
-
-
-     # Get the appropriate OpenMP paths for the architecture
-    def get_openmp_paths(self, arch):
-        system = platform.system()
-        if system == "Darwin":
-            if arch == 'arm64':
-                try:
-                    brew_prefix = subprocess.getoutput("brew --prefix libomp")
-                    return f"{brew_prefix}/include", f"{brew_prefix}/lib"
-                except:
-                    pass
-            return "/usr/local/opt/libomp/include", "/usr/local/opt/libomp/lib"
-        elif system == "Windows":
-            return "", ""  # OpenMP is typically included with MinGW
-        else:
-            return "/usr/include", "/usr/lib"
-
-
-    # Check if the current compiler supports OpenMP
     def check_openmp_support(self, compiler):
+        """Check if OpenMP is supported by compiling and running a small test program."""
+        omp_test_code = r"""
+        #include <omp.h>
+        #include <stdio.h>
+    
+        int main() {
+            int nthreads = 0;
+            #pragma omp parallel
+            {
+                #pragma omp atomic
+                nthreads++;
+            }
+            printf("OpenMP test: %d threads\n", nthreads);
+            return 0;
+        }
+        """
+        test_c_file = "test_openmp.c"
+        test_exe_file = "test_openmp_exec"
+        
+        with open(test_c_file, 'w') as f:
+            f.write(omp_test_code)
+    
+        # Compile the OpenMP test program
+        compile_cmd = [compiler, test_c_file, "-o", test_exe_file, "-fopenmp"]
         try:
-            with open(os.devnull, 'w') as devnull:
-                result = subprocess.run([compiler, "-Xpreprocessor", "-fopenmp", "-o", "/dev/null", "-x", "c++", "-"],
-                                        input="", stdout=devnull, stderr=devnull, text=True)
-            if result.returncode == 0:
-                print("OpenMP is supported.")
+            subprocess.check_call(compile_cmd)
+            
+            # Run the compiled test program to verify OpenMP
+            result = subprocess.check_output(f"./{test_exe_file}" if platform.system() != "Windows" else test_exe_file, shell=True)
+            
+            # Clean up the test files
+            os.remove(test_c_file)
+            os.remove(test_exe_file)
+            
+            if b"OpenMP test" in result:
+                print(f"OpenMP is supported. {result.decode('utf-8').strip()}")
                 return True
             else:
-                print("OpenMP is not supported.")
+                print("OpenMP not supported or test program failed to run.")
                 return False
-        except subprocess.CalledProcessError:
-            print("Error checking OpenMP support. Assuming it's not available.")
+        except (subprocess.CalledProcessError, OSError) as e:
+            print(f"OpenMP check failed: {e}")
+            os.remove(test_c_file)
+            if os.path.exists(test_exe_file):
+                os.remove(test_exe_file)
             return False
-        except Exception as e:
-            print(f"Unexpected error checking OpenMP support: {e}")
-            return False
+    
 
-# Main setup function that defines the package configuration
+    def execute_command(self, cmd, description):
+        print(f"Executing: {' '.join(cmd)}")
+        try:
+            subprocess.check_call(cmd)
+        except subprocess.CalledProcessError as e:
+            raise CompileError(f"Error {description}: {e}")
+
+# Main setup function
 setup(
     name="sparse_matrix_mult",
     version="0.1",
     packages=find_packages(include=['sparse_matrix_mult', 'sparse_matrix_mult.*']),
     include_package_data=True,
     package_data={
-        'sparse_matrix_mult': [f'lib/*.{get_lib_extension()}'],
-        '': ['include/*.h'],
+    'sparse_matrix_mult': ['lib/*.*'],  # This will include .so, .dylib, and .pyd files
+    '': ['include/*.h'],
     },
     install_requires=[
         'numpy',
