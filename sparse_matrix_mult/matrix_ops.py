@@ -23,12 +23,12 @@ class SparseMat(ctypes.Structure):
     dimensions of the matrix, row pointer, column index, and the values of non-zero elements.
     """
     _fields_ = [
-        ("nzmax", ctypes.c_int),  /**< Maximum number of non-zero entries in the matrix. */
-        ("rows", ctypes.c_int),   /**< Number of rows in the matrix. */
-        ("cols", ctypes.c_int),   /**< Number of columns in the matrix. */
-        ("rowPtr", ctypes.POINTER(ctypes.c_int)), /**< Pointer to the row pointer array. */
-        ("colInd", ctypes.POINTER(ctypes.c_int)), /**< Pointer to the column index array. */
-        ("values", ctypes.POINTER(ctypes.c_double)) /**< Pointer to the values of non-zero elements. */
+        ("nzmax", ctypes.c_int),  #/**< Maximum number of non-zero entries in the matrix. */
+        ("rows", ctypes.c_int),   #/**< Number of rows in the matrix. */
+        ("cols", ctypes.c_int),   #/**< Number of columns in the matrix. */
+        ("rowPtr", ctypes.POINTER(ctypes.c_int)), #/**< Pointer to the row pointer array. */
+        ("colInd", ctypes.POINTER(ctypes.c_int)), #/**< Pointer to the column index array. */
+        ("values", ctypes.POINTER(ctypes.c_double)) #/**< Pointer to the values of non-zero elements. */
     ]
 
 
@@ -41,9 +41,9 @@ class DArray(ctypes.Structure):
     columns, and the data in the form of a 2D array.
     """
     _fields_ = [
-        ("array", ctypes.POINTER(ctypes.c_double)), /**< Pointer to the array of matrix elements. */
-        ("rows", ctypes.c_int),  /**< Number of rows in the matrix. */
-        ("cols", ctypes.c_int),  /**< Number of columns in the matrix. */
+        ("array", ctypes.POINTER(ctypes.c_double)), #/**< Pointer to the array of matrix elements. */
+        ("rows", ctypes.c_int),  #/**< Number of rows in the matrix. */
+        ("cols", ctypes.c_int),  #/**< Number of columns in the matrix. */
     ]
 
 
@@ -210,6 +210,13 @@ def darray_to_numpy(darray_ptr):
     darray = darray_ptr.contents
     numpy_array = np.ctypeslib.as_array(darray.array, shape=(darray.rows, darray.cols)).copy()
     return numpy_array
+
+def create_sparsemat():
+    return ctypes.pointer(SparseMat())
+
+
+def create_darray():
+    return ctypes.pointer(DArray())
 
 
 def sparse_matrix_multiply(matrix_a, matrix_b, output_format='sparse', symmetric=False, imem_size=None,
