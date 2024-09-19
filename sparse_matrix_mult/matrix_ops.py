@@ -212,10 +212,31 @@ def darray_to_numpy(darray_ptr):
     return numpy_array
 
 def create_sparsemat():
+    """
+    Create and return a pointer to a new SparseMat structure.
+
+    This function allocates memory for a new SparseMat structure,
+    which represents a sparse matrix in CSR (Compressed Sparse Row) format.
+    It is used as an interface between Python and the C library for
+    efficient sparse matrix operations.
+
+    Returns:
+        ctypes.pointer(SparseMat): A pointer to the newly created SparseMat structure.
+    """
     return ctypes.pointer(SparseMat())
 
-
 def create_darray():
+    """
+    Create and return a pointer to a new DArray structure.
+
+    This function allocates memory for a new DArray structure,
+    which represents a dense matrix or array. It is used as an interface
+    between Python and the C library for operations that require or
+    produce dense matrix results.
+
+    Returns:
+        ctypes.pointer(DArray): A pointer to the newly created DArray structure.
+    """
     return ctypes.pointer(DArray())
 
 
