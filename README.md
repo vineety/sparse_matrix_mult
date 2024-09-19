@@ -82,19 +82,30 @@ make -f Makefile.linux
 ```
 
 #### Windows
-Windows users should prefer the setup.py method. If using Make is necessary, ensure MinGW-w64 is installed and use:
-```
-mingw32-make make -f Makefile.windows_mingw
-I downloaded mingw from https://github.com/niXman/mingw-builds-binaries/releases
-The recent one I downloaded was x86_64-14.2.0-release-mcf-seh-ucrt-rt_v12-rev0.7z
-These are builds so extract the files and put in a new folder. You can name it as mingw
-To access mingw g++ compiler and make directly from commandline
-Open Start, search for Environment Variables, and select Advanced and Edit environment variables.
-Under system variables browse to  variable path and edit. Then click new and add path to bin directory for mingw.
-Similarly it would be best to install anaconda and add the path to anaconda3 directory under system variables, which would
-allow you to access python from commandline (by just typing python) as well as all packages linke numpy.
-*****
-Once you have access to g++ go to the root folder of the package and type mingw32-make 0f Makefile.windows_mingw to compile the code
+Instructions for Using MinGW and Compiling the Code
+To compile the package using MinGW, follow these steps:
+
+Download MinGW:
+You can download MinGW from this link.
+The version I downloaded was x86_64-14.2.0-release-mcf-seh-ucrt-rt_v12-rev0.7z.
+These are pre-built binaries, so after downloading, extract the files into a folder (e.g., name it mingw).
+
+Set up the Environment:
+To use the MinGW g++ compiler and make directly from the command line, follow these steps:
+
+Open Start, search for Environment Variables, and select Edit the system environment variables.
+In the System Properties window, click Environment Variables.
+Under System Variables, find the Path variable and select Edit.
+Click New and add the path to the bin directory of the MinGW folder (e.g., C:\path\to\mingw\bin).
+Install Anaconda (Optional but Recommended):
+It is recommended to install Anaconda and add its path to the system variables as well. This will allow you to access Python (by simply typing python in the command line) and use packages like numpy.
+
+During Anaconda installation, make sure to check the option to Add Anaconda to my PATH environment variable.
+
+Compiling the Package:
+Once you have access to g++, navigate to the root folder of the package and run the following command to compile the code:
+
+mingw32-make -f Makefile.windows_mingw
 
 ```
 
