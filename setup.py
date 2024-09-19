@@ -2,6 +2,9 @@
 # -*- coding: utf-8 -*-
 """
 Created on Thu Sep 19 14:48:30 2024
+python setup.py build_ext
+or
+pip install -e . -v
 
 @author: vineet
 """
