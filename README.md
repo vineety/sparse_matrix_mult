@@ -147,11 +147,6 @@ For questions or support, please contact Vineet Yadav at yadavvineet@gmail.com.
 Quick Example
 Here's a real example from our test suite that demonstrates the package in action, including performance measurements:
 
-
-# Parallel Sparse Matrix Multiplication Routines
-
-[Previous content remains unchanged]
-
 ## Quick Example
 
 Here's a real example from our test suite that demonstrates the package in action, including performance measurements:
