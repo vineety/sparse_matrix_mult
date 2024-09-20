@@ -1,5 +1,5 @@
 CXX := clang++
-CXXFLAGS := -std=c++11 -Wall -O3 -fPIC -Xpreprocessor -fopenmp
+CXXFLAGS := -std=c++11 -Wall -O3 -fPIC -Xpreprocessor -fopenmp -funroll-loops -ffast-math
 INCLUDES := -I./include
 SOURCES := src/memfunctions.cpp src/sparse_sparse_dense.cpp src/sparse_sparse_sparse.cpp src/sparsework.cpp src/workdivision.cpp
 LIBDIR := sparse_matrix_mult/lib
