@@ -1,11 +1,12 @@
 # Compiler settings: g++ as the compiler
 CXX := g++
 
-# Compiler flags: 
-CXXFLAGS := -Wall -O3 -fPIC -std=c++11
+# Base flags
+BASE_CXXFLAGS := -Wall -O3 -fPIC -std=c++11 -march=native -mtune=native -ffast-math -funroll-loops -fomit-frame-pointer -flto -DNDEBUG -DSPARSE_LIB_EXPORTS
+BASE_LDFLAGS := -shared -flto
 
-# Linker flags for creating shared libraries
-LDFLAGS := -shared
+# OpenMP flag
+OPENMP_FLAG := -fopenmp
 
 # Include directories for headers
 INCLUDES := -I./include
@@ -27,50 +28,46 @@ OBJECTS := $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR)/%.o,$(SOURCES))
 # Define the output shared library file
 LIBRARY := $(LIB_DIR)/libsparse_x86_64.so
 
-# Targets
-.PHONY: all clean openmp_check
+# Perform OpenMP check once at the start
+ifeq ($(shell echo "int main() { return 0; }" | $(CXX) $(OPENMP_FLAG) -x c++ -o /dev/null - >/dev/null 2>&1 && echo 1 || echo 0), 1)
+    CXXFLAGS := $(BASE_CXXFLAGS) $(OPENMP_FLAG)
+    LDFLAGS := $(BASE_LDFLAGS) $(OPENMP_FLAG)
+    $(info OpenMP is available. Compiling with OpenMP support.)
+else
+    CXXFLAGS := $(BASE_CXXFLAGS)
+    LDFLAGS := $(BASE_LDFLAGS)
+    $(info OpenMP is not available. Compiling without OpenMP support.)
+endif
 
 # Default target: Build the shared library
-all: openmp_check $(LIBRARY)
-
-# OpenMP check target
-openmp_check:
-	@if echo "int main() { return 0; }" | $(CXX) -fopenmp -x c++ -o /dev/null - >/dev/null 2>&1; then \
-		echo "OpenMP is available. Compiling with OpenMP support."; \
-		echo "CXXFLAGS += -fopenmp" >> .openmp_flags; \
-		echo "LDFLAGS += -fopenmp" >> .openmp_flags; \
-	else \
-		echo "OpenMP not available. Compiling without OpenMP support."; \
-		rm -f .openmp_flags; \
-	fi
-
-# Include OpenMP flags if available
--include .openmp_flags
+all: $(LIBRARY)
 
 # Link object files into the shared library
 $(LIBRARY): $(OBJECTS)
-	@if [ ! -d "$(LIB_DIR)" ]; then \
-		echo "Error: $(LIB_DIR) does not exist. Please ensure your Python package structure is correct."; \
-		exit 1; \
-	fi
+	@mkdir -p $(LIB_DIR)
+	@echo "Linking shared library..."
+	@echo "Using LDFLAGS: $(LDFLAGS)"
 	$(CXX) $(LDFLAGS) $^ -o $@ $(LIBS)
 
 # Compile .cpp source files into .o object files
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp | $(OBJ_DIR)
+	@echo "Compiling $<..."
+	@echo "Using CXXFLAGS: $(CXXFLAGS)"
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
 
 # Create the obj directory if it doesn't exist
 $(OBJ_DIR):
 	mkdir -p $@
 
-# Clean target: Remove object files and OpenMP flags file
-# Clean target: Remove object files and OpenMP flags file
+# Clean target: Remove object files and the library
 clean:
 	@echo "Cleaning up object files and libraries..."
-	@if [ -d "$(OBJ_DIR)" ]; then rm -rf $(OBJ_DIR); fi
-	@if [ -f ".openmp_flags" ]; then rm -f .openmp_flags; fi
-	@if [ -f "$(LIBRARY)" ]; then rm -f $(LIBRARY); fi
+	@rm -rf $(OBJ_DIR)
+	@rm -f $(LIBRARY)
 
+# Print the value of any Makefile variable (for debugging)
+print-%:
+	@echo $* = $($*)
 
 # Print the value of any Makefile variable (for debugging)
 print-%:
