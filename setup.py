@@ -1,17 +1,13 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Thu Sep 19 14:48:30 2024
-python setup.py build_ext
-or
-pip install -e . -v
+Created on Thu Sep 19 20:43:27 2024
 
-@author: vineet
+@author: yadav
 """
-
 import os
 import platform
 import subprocess
+import tempfile
 from setuptools import setup, find_packages, Extension
 from setuptools.command.build_ext import build_ext
 from distutils.errors import CompileError, DistutilsError
@@ -20,24 +16,27 @@ from distutils.errors import CompileError, DistutilsError
 openmp_supported = False
 
 class BuildSharedLibrary(build_ext):
-    
     def run(self):
         global openmp_supported
         system = platform.system()
 
         if system == "Windows":
+            # Check if OpenMP is supported on Windows
+            openmp_supported = self.check_openmp_support_windows("g++")
             self.build_windows()
         else:
             architectures = self.get_macos_architectures() if system == "Darwin" else self.get_linux_architectures()
+            openmp_supported = self.check_openmp_support_unix("g++")
             self.build_unix(system, architectures)
 
-        # Print OpenMP support status at the end of the build process
+        # Print OpenMP support status at the end of the build process based on actual support
         if openmp_supported:
             print("\nInstallation completed with OpenMP support.")
             print("Your library will use parallel processing capabilities where available.")
         else:
             print("\nInstallation completed without OpenMP support.")
             print("Your library will run in single-threaded mode.")
+
 
     def build_unix(self, system, architectures):
         for arch in architectures:
@@ -54,40 +53,40 @@ class BuildSharedLibrary(build_ext):
                     print("Continuing with next architecture...")
                 else:
                     raise DistutilsError("Failed to build the shared library.")
-            
+
     def build_windows(self):
-        global openmp_supported
-        print("Building for Windows...")
-        
-        # Compiler settings for MinGW (assuming it's installed via Anaconda)
-        cxx = "g++"
-        cxxflags = ["-Wall", "-O3", "-shared", "-std=c++11"]
-        includes = ["-I./include"]
-        
-        # Directories
-        src_dir = "src"
-        lib_dir = os.path.join("sparse_matrix_mult", "lib")
-        
-        # Output library (use .pyd for Windows Python extension)
-        library = os.path.join(lib_dir, f"libsparse_{platform.machine()}.pyd")
-        
-        # Source files
-        sources = [os.path.join(src_dir, f) for f in os.listdir(src_dir) if f.endswith('.cpp')]
-        
-        # Create lib directory
-        os.makedirs(lib_dir, exist_ok=True)
-        
-        # OpenMP check
-        if self.check_openmp_support(cxx):
-            print("OpenMP is available. Compiling with OpenMP support.")
-            cxxflags.append("-fopenmp")
-            openmp_supported = True
-        else:
-            print("OpenMP not available. Compiling without OpenMP support.")
-        
-        # Compile and link in one step
-        cmd = [cxx] + cxxflags + includes + sources + ["-o", library]
-        self.execute_command(cmd, "compiling and linking library")
+    		global openmp_supported
+    		print("Building for Windows...")
+    		
+    		# Compiler settings for MinGW
+    		cxx = "g++"
+    		cxxflags = ["-Wall", "-O3", "-std=c++11", "-fopenmp", "-DSPARSE_LIB_EXPORTS"]
+    		ldflags = ["-shared"]
+    		includes = ["-I./include"]
+    		libs = ["-lgomp"]
+    		
+    		# Directories
+    		src_dir = "src"
+    		lib_dir = os.path.join("sparse_matrix_mult", "lib")
+    		
+    		# Output library (use .dll for Windows shared library)
+    		library = os.path.join(lib_dir, "libsparse_x64.dll")
+    		
+    		# Source files
+    		sources = [os.path.join(src_dir, f) for f in os.listdir(src_dir) if f.endswith('.cpp')]
+    		
+    		# Create lib directory
+    		os.makedirs(lib_dir, exist_ok=True)
+    		
+    		# Compile and link in one step
+    		cmd = [cxx] + cxxflags + includes + ldflags + ["-o", library] + sources + libs
+    		self.execute_command(cmd, "compiling and linking library")
+    		
+    		if os.path.exists(library):
+    			print(f"Compilation succeeded with OpenMP support. Output: {library}")
+    		else:
+    			print("Compilation failed.")
+
 
     def get_macos_architectures(self):
         architectures = []
@@ -131,7 +130,7 @@ class BuildSharedLibrary(build_ext):
         os.makedirs(obj_dir, exist_ok=True)
         
         # OpenMP check
-        if self.check_openmp_support(cxx):
+        if self.check_openmp_support_unix(cxx):
             print("OpenMP is available. Compiling with OpenMP support.")
             cxxflags.append("-fopenmp")
             ldflags.append("-fopenmp")
@@ -149,54 +148,43 @@ class BuildSharedLibrary(build_ext):
         cmd = [cxx] + ldflags + objects + ["-o", library]
         self.execute_command(cmd, "linking shared library")
 
-    def check_openmp_support(self, compiler):
-        """Check if OpenMP is supported by compiling and running a small test program."""
-        omp_test_code = r"""
+    def check_openmp_support_unix(self, compiler):
+        try:
+            with open(os.devnull, 'w') as devnull:
+                subprocess.check_call([compiler, "-fopenmp", "-E", "-", "-o", "/dev/null"], 
+                                      stdin=subprocess.DEVNULL, stdout=devnull, stderr=devnull)
+            return True
+        except subprocess.CalledProcessError:
+            return False
+
+    def check_openmp_support_windows(self, compiler):
+        omp_test_code = """
         #include <omp.h>
         #include <stdio.h>
-    
         int main() {
-            int nthreads = 0;
             #pragma omp parallel
-            {
-                #pragma omp atomic
-                nthreads++;
-            }
-            printf("OpenMP test: %d threads\n", nthreads);
+            { printf("Thread %d\\n", omp_get_thread_num()); }
             return 0;
         }
         """
-        test_c_file = "test_openmp.c"
-        test_exe_file = "test_openmp_exec"
-        
-        with open(test_c_file, 'w') as f:
-            f.write(omp_test_code)
-    
-        # Compile the OpenMP test program
-        compile_cmd = [compiler, test_c_file, "-o", test_exe_file, "-fopenmp"]
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.cpp', delete=False) as tmp_file:
+            tmp_file.write(omp_test_code)
+            tmp_file.flush()
+            file_name = tmp_file.name
+
         try:
-            subprocess.check_call(compile_cmd)
-            
-            # Run the compiled test program to verify OpenMP
-            result = subprocess.check_output(f"./{test_exe_file}" if platform.system() != "Windows" else test_exe_file, shell=True)
-            
-            # Clean up the test files
-            os.remove(test_c_file)
-            os.remove(test_exe_file)
-            
-            if b"OpenMP test" in result:
-                print(f"OpenMP is supported. {result.decode('utf-8').strip()}")
-                return True
-            else:
-                print("OpenMP not supported or test program failed to run.")
-                return False
-        except (subprocess.CalledProcessError, OSError) as e:
-            print(f"OpenMP check failed: {e}")
-            os.remove(test_c_file)
-            if os.path.exists(test_exe_file):
-                os.remove(test_exe_file)
+            # Compile
+            subprocess.check_call([compiler, "-fopenmp", file_name, "-o", "omp_test.exe"], 
+                                  stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            # Run
+            output = subprocess.check_output(["omp_test.exe"], universal_newlines=True)
+            return "Thread" in output
+        except subprocess.CalledProcessError:
             return False
-    
+        finally:
+            os.remove(file_name)
+            if os.path.exists("omp_test.exe"):
+                os.remove("omp_test.exe")
 
     def execute_command(self, cmd, description):
         print(f"Executing: {' '.join(cmd)}")
@@ -212,8 +200,8 @@ setup(
     packages=find_packages(include=['sparse_matrix_mult', 'sparse_matrix_mult.*']),
     include_package_data=True,
     package_data={
-    'sparse_matrix_mult': ['lib/*.*'],  # This will include .so, .dylib, and .pyd files
-    '': ['include/*.h'],
+        'sparse_matrix_mult': ['lib/*.*'],
+        '': ['include/*.h'],
     },
     install_requires=[
         'numpy',
