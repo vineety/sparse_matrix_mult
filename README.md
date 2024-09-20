@@ -219,10 +219,70 @@ To run the full test suite and see more detailed performance comparisons across 
 pytest
 ```
 
-[Rest of the content remains unchanged]
-
 # Run the test
 test_sparse_multiply_performance()
+
+# Additional Windows Installation Directions
+Instructions for Using MinGW and Compiling the Code:
+To compile the package using MinGW, follow these steps:
+
+Download MinGW:
+
+You can download MinGW from this link.
+The version I downloaded was x86_64-14.2.0-release-mcf-seh-ucrt-rt_v12-rev0.7z.
+These are pre-built binaries, so after downloading, extract the files into a folder (e.g., name it mingw).
+
+Set up the Environment:
+
+To use the MinGW g++ compiler and make directly from the command line, follow these steps:
+
+Open Start, search for Environment Variables, and select Edit the system environment variables.
+In the System Properties window, click Environment Variables.
+Under System Variables, find the Path variable and select Edit.
+Click New and add the path to the bin directory of the MinGW folder (e.g., C:\path\to\mingw\bin).
+
+Install Anaconda (Optional but Recommended):
+
+It is recommended to install Anaconda and add its path to the system variables as well. This will allow you to access Python (by simply typing python in the command line) and use packages like numpy.
+During Anaconda installation, make sure to check the option to Add Anaconda to my PATH environment variable.
+
+Compiling the Package:
+
+Once you have access to g++, navigate to the root folder of the package and run the following command to compile the code:
+mingw32-make -f Makefile.windows_mingw
+
+Anaconda and Conda Command Prompt Installation:
+
+For pip install, try installing from conda environment in Anaconda. Just navigate to directory where you have the package and run:
+pip install -e . -v
+
+Check if dll file is created
+
+
+# Additional Troubleshooting Details
+
+Build Tools:
+
+macOS: Install Xcode Command Line Tools (xcode-select --install)
+Linux: Install GCC and Make (sudo apt-get install build-essential on Ubuntu)
+Windows: Install MinGW-w64
+
+
+Python Dependencies:
+pip install numpy scipy
+
+OpenMP on macOS:
+brew install libomp
+
+Clean Build:
+make clean
+make
+
+
+Verifying Installation and Example Use Cases
+An example script "matrix_ops_script.py" is also included to test to compare results against numpy and to demonstrate how to use the code. For ideal performance compile with openmp.
+For further assistance, please open an issue on our GitHub repository.
+If you successfully compile the library on macOS or Windows and would like to contribute build scripts, please open a pull request!
 
 
 
