@@ -20,23 +20,17 @@ LIBRARY := $(LIB_DIR)\libsparse_x64.dll
 .PHONY: all clean
 
 all: $(LIBRARY)
-	@echo "Ensure you're running this script from the root directory."
-	@echo "Install MinGW from https://www.mingw-w64.org."
-	@echo "To set up environment variables on Windows:"
-	@echo "1. Search for Environmental Variables."
-	@echo "2. Click Advanced system settings → Environment Variables."
-	@echo "3. Under System Variables, find Path, select it, and click Edit."
-	@echo "4. Click New, and add the path to your MinGW bin folder (e.g., C:\\mingw-w64\\bin)."
-	@echo "5. Click OK to save the changes."
-	@echo "6. IF COMPILATION SUCCEDS THERE SHOULD BE DLL FILE IN lib DIRECTORY in sparse_matrix_mult folder."
+	@echo Compilation completed. Check $(LIBRARY) for the output file.
+	@echo If compilation fails, refer to the README file.
 
 $(LIBRARY): $(SOURCES)
 	@if not exist $(LIB_DIR) mkdir $(LIB_DIR)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -DSPARSE_LIB_EXPORTS $(LDFLAGS) -o $@ $^ $(LIBS)
+	@echo Compilation succeeded with OpenMP support.
 
 clean:
-	@del /Q $(LIBRARY) 2>NUL
-	@for %%f in ($(SOURCES:.cpp=.o)) do @if exist %%f del /Q %%f
+	@if exist $(LIBRARY) del $(LIBRARY)
+	@for %%f in ($(SOURCES:.cpp=.o)) do @if exist %%f del %%f
 
 # For debugging: print the value of a variable
 print-%:
