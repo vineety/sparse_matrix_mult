@@ -2,7 +2,7 @@
 #include <stdlib.h>      // Standard library functions for memory allocation and free
 #include <string.h>      // String manipulation functions
 #include <math.h>        // Math library functions
-#ifdef USE_OPENMP         // If OpenMP is enabled, include OpenMP header
+#ifdef _OPENMP         // If OpenMP is enabled, include OpenMP header
 #include <omp.h>
 #endif
 #include "matrix_def.h"   // Custom header file that defines matrix structures
