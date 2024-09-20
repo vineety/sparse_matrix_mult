@@ -1,6 +1,6 @@
 #include <string.h>
 #include <math.h>
-#ifdef USE_OPENMP
+#ifdef _OPENMP
 #include <omp.h>  // Include OpenMP for parallel processing
 #endif
 #include "matrix_def.h"  // Include matrix structure definitions
