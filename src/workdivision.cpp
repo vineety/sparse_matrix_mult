@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#ifdef USE_OPENMP
+#ifdef _OPENMP
 #include <omp.h>  // Include OpenMP for parallelization
 #endif
 #include "matrix_def.h"  // Include custom matrix definitions
