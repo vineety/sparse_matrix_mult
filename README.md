@@ -1,147 +1,229 @@
-# Efficient Sparse Matrix Multiplication for Atmospheric Inverse Problems
+Parallel Sparse Matrix Multiplication Routines
+Overview
+This repository provides efficient sparse-sparse (SS) matrix multiplication algorithms designed for use in linear atmospheric inverse problems. The package improves computational efficiency when calculating covariance matrices for observations and a posteriori uncertainties.
 
-## Overview
-This repository contains implementations of efficient sparse-sparse (SS) matrix multiplication algorithms specifically designed for linear atmospheric inverse problems. The algorithms improve computational efficiency in calculating covariance matrices of observations and a posteriori uncertainties.
+The package implements parallelized matrix multiplication routines using OpenMP for enhanced performance on multi-core processors.
 
-## Key Features
-1. A hybrid-parallel sparse-sparse matrix multiplication approach that is about 33% more efficient in execution time and requires about 38% fewer floating-point operations compared to standard algorithms.
-2. Modifications for operations typical in atmospheric inverse problems:
-   - Yielding only upper triangular matrices
-   - Producing dense matrices from sparse matrix multiplication
+Key Features
+Hybrid Parallel Sparse-Sparse Multiplication: This package uses a hybrid-parallel approach to multiply two sparse matrices in compressed sparse row (CSR) format.
+Multiple Output Formats: Supports both sparse and dense matrix outputs, with options for symmetric or non-symmetric results.
+Triple Product Calculation: Efficient computation of triple products 
+𝐴
+×
+𝐵
+×
+𝐴
+𝑇
+A×B×A 
+T
+ , often used in covariance and uncertainty calculations.
+Requirements
+C/C++ compiler with OpenMP support (e.g., gcc, clang, or MinGW on Windows)
+Python 3.6+ with numpy and scipy installed
+Routines
+The package includes the following routines for Sparse x Sparse matrix multiplication:
 
-## Algorithms
-The package includes three main types of SS matrix multiplication routines:
-1. Multiplication of a sparse matrix H with a sparse diagonal, sparse block-diagonal, or full-dense covariance matrix Q
-2. Multiplication of a sparse HQ with a sparse H^T resulting in a sparse symmetric matrix
-3. Multiplication of a sparse HQ with a sparse H^T resulting in a dense symmetric matrix
+Sparse x Sparse → Sparse (CSR):
+Multiplies two sparse matrices 
+𝐴
+×
+𝐵
+A×B, resulting in a sparse matrix 
+𝐶
+C in CSR format. You can control whether the output is symmetric or non-symmetric.
 
-## Installation
-To compile the source code, use the provided Makefile:
+python
+Copy code
+result_sparse = sparse_matrix_multiply(matrix_a, matrix_b, output_format='sparse', symmetric=False)
+Sparse x Sparse → Dense:
+Multiplies two sparse matrices, 
+𝐴
+×
+𝐵
+A×B, and outputs a dense matrix 
+𝐶
+C. This is useful when the result is expected to be dense.
 
-```bash
-make
-```
+python
+Copy code
+result_dense = sparse_matrix_multiply(matrix_a, matrix_b, output_format='dense', symmetric=False)
+Sparse x Sparse → Symmetric Sparse (CSR):
+Multiplies two sparse matrices, 
+𝐴
+×
+𝐵
+A×B, and outputs a symmetric sparse matrix. Only the upper triangular matrix is computed, assuming symmetry.
 
-## Usage
-The package provides C++ routines that can be integrated into atmospheric inverse modeling software. See the main function in the source code for usage examples with small test matrices.
+python
+Copy code
+result_sym_sparse = sparse_matrix_multiply(matrix_a, matrix_b, output_format='sparse', symmetric=True)
+Sparse x Sparse → Symmetric Dense:
+Similar to the symmetric sparse operation, but the output is a dense matrix. This is useful for operations where the result is expected to be dense.
 
-For large matrices, use the file-based main function to read sparse matrices from files and write the output to a file.
+python
+Copy code
+result_sym_dense = sparse_matrix_multiply(matrix_a, matrix_b, output_format='dense', symmetric=True)
+Triple Product (A x B x A') → Symmetric Dense:
+Efficiently computes the triple product 
+𝐴
+×
+𝐵
+×
+𝐴
+𝑇
+A×B×A 
+T
+ , often used in covariance calculations. The output is a symmetric dense matrix.
 
-## Performance
-On test cases, the proposed algorithm shows:
-- ~33% faster execution time
-- ~38% fewer floating-point operations
-compared to Intel's MKL csrmultcsr routine.
+python
+Copy code
+result_triple_sym_dense = sparse_matrix_multiply(matrix_a, matrix_b, output_format='dense', use_triple_product=True)
+Installation
+Using pip (Recommended)
+Ensure you have Python 3.6+ and pip installed.
+Install the package:
+bash
+Copy code
+pip install .
+Alternatively, if you download the package from GitHub, navigate to the root directory and install with:
+bash
+Copy code
+pip install -e . -v
+Using Makefiles
+If pip install fails due to missing dependencies or OpenMP support, you can compile the library manually using the system-specific Makefiles:
 
-## Requirements
-- C++ compiler with OpenMP support
-- Intel Math Kernel Library (for comparison purposes)
-
-## Citation
-If you use this code in your research, please cite:
-```
-Yadav, V. and Michalak, A. M.: Technical Note: Improving the computational efficiency of sparse matrix multiplication in linear atmospheric inverse problems, Geosci. Model Dev. Discuss., doi:10.5194/gmd-2016-204, 2016.
-```
-
-## Acknowledgments
-This work was supported by funds from National Science Foundation under Grant No. 1342076. The research was carried out at the Jet Propulsion Laboratory, California Institute of Technology, under a contract NNN15R040T between Carnegie Institution of Washington and National Aeronautics and Space Administration.
-
-## License
-[Insert appropriate license information here]
-
-## Contact
-For questions or support, please contact:
-Vineet Yadav (yadavvineet@gmail.com)
-
-## Installation Instructions
-
-## Installation
-
-### Option 1: Using setup.py (Recommended)
-
-1. Ensure you have Python 3.6+ and pip installed.
-2. Run:
-   ```
-   pip install .
-   ```
-   or
-   ```
-   python setup.py install
-   ```
-
-### Option 2: Using Makefiles
-
-#### macOS
-```
+macOS
+bash
+Copy code
 make -f Makefile.mac
-```
-
-#### Linux
-```
+Linux
+bash
+Copy code
 make -f Makefile.linux
-```
+Windows (MinGW)
+Windows Installation Guide
+1. Install MinGW-w64
+MinGW-w64 is required to compile the C++ code and link with OpenMP. Follow these steps:
 
-#### Windows
-Instructions for Using MinGW and Compiling the Code
-To compile the package using MinGW, follow these steps:
+Download MinGW-w64:
 
-Download MinGW:
-You can download MinGW from this link.
-The version I downloaded was x86_64-14.2.0-release-mcf-seh-ucrt-rt_v12-rev0.7z.
-These are pre-built binaries, so after downloading, extract the files into a folder (e.g., name it mingw).
+Visit the MinGW-w64 website and download the version that supports your system.
+Example: Download the file x86_64-14.2.0-release-mcf-seh-ucrt-rt_v12-rev0.7z.
+Extract MinGW:
 
-Set up the Environment:
-To use the MinGW g++ compiler and make directly from the command line, follow these steps:
+Extract the downloaded file into a folder. For example, extract it to C:\mingw-w64.
+Add MinGW to System Path:
 
-Open Start, search for Environment Variables, and select Edit the system environment variables.
+Open the Start Menu, search for Environment Variables, and select Edit the system environment variables.
 In the System Properties window, click Environment Variables.
-Under System Variables, find the Path variable and select Edit.
-Click New and add the path to the bin directory of the MinGW folder (e.g., C:\path\to\mingw\bin).
-Install Anaconda (Optional but Recommended):
-It is recommended to install Anaconda and add its path to the system variables as well. This will allow you to access Python (by simply typing python in the command line) and use packages like numpy.
+Under System Variables, find the Path variable and click Edit.
+Click New and add the path to the bin directory of your MinGW folder, e.g., C:\mingw-w64\bin.
+This will allow you to use the g++ and make commands from the command line.
+2. Install Python and Anaconda (Optional but Recommended)
+Anaconda makes managing Python environments and dependencies easier. Follow these steps to install Anaconda:
 
-During Anaconda installation, make sure to check the option to Add Anaconda to my PATH environment variable.
+Download Anaconda:
 
-Compiling the Package:
-Once you have access to g++, navigate to the root folder of the package and run the following command to compile the code:
+Visit the Anaconda website and download the Python 3.x version for Windows.
+Install Anaconda:
 
+During installation, ensure the option Add Anaconda to my PATH environment variable is checked.
+This will allow you to run Python from the command line.
+Verify Installation:
+
+Open a command prompt and run python --version to check that Python is properly installed.
+3. Install Dependencies
+Before compiling, install the necessary Python dependencies:
+
+bash
+Copy code
+pip install numpy scipy
+4. Compiling the Package with MinGW
+Once MinGW is set up and Python dependencies are installed, you can compile the package using the provided Makefile for Windows.
+
+Navigate to the Package Directory: Open a command prompt and navigate to the root folder of the downloaded package:
+
+bash
+Copy code
+cd path\to\sparse_matrix_mult
+Compile the Package: Run the Makefile.windows_mingw file to compile the C++ code and create the necessary DLL files:
+
+bash
+Copy code
 mingw32-make -f Makefile.windows_mingw
+5. Verify Installation
+After compilation, verify that the .dll files were created in the sparse_matrix_mult/lib directory. These DLL files are the compiled shared libraries that the Python interface will use.
 
-Anaconda and Conda Command Prompt Installation
-For pip install try installing from conda environment in Anaconda. Just navigate to directory where you have the package and run pip install .e . -v
-check if dll file is created
+6. Installing the Package
+Once the compilation is successful, install the Python package by running the following command in the root directory:
 
-```
+bash
+Copy code
+pip install .
+Alternatively, use the following for an editable install, which allows for testing and development:
 
-### Troubleshooting
+bash
+Copy code
+pip install -e . -v
+7. Running Tests and Example Scripts
+To verify the installation, you can run the provided test scripts or use pytest to run all unit tests.
 
-- **Build Tools**: 
-  - macOS: Install Xcode Command Line Tools (`xcode-select --install`)
-  - Linux: Install GCC and Make (`sudo apt-get install build-essential` on Ubuntu)
-  - Windows: Install MinGW-w64
+Run Example Script: In the sparse_matrix_mult directory, run the example script to test sparse matrix multiplication:
 
-- **Python Dependencies**:
-  ```
-  pip install numpy scipy
-  ```
+bash
+Copy code
+python matrix_ops_script.py
+Run Unit Tests: Use pytest to run all the tests in the package:
 
-- **OpenMP on macOS**:
-  ```
-  brew install libomp
-  ```
+bash
+Copy code
+pytest
+Additional Information for OpenMP on Windows
+OpenMP should be supported automatically when using MinGW, but make sure that g++ supports OpenMP:
 
-- **Clean Build**:
-  ```
-  make clean
-  make
-  ```
+To check if g++ supports OpenMP, run the following command:
+bash
+Copy code
+g++ -fopenmp -o omp_test omp_test.cpp
+If you encounter errors related to OpenMP, you may need to ensure that the correct version of MinGW with OpenMP support is installed. Additionally, if you are using a version of Python compiled without OpenMP support, you may need to recompile it.
 
-### Verifying Installation and Example Use Cases
+Troubleshooting
+Common Issues
+Missing Build Tools:
 
-```python
-An example script  "matrix_ops_script.py" is also included to test to compare results against numpy and to demonstrate how to use the code. For ideal performance compile with openmp
+macOS: Install Xcode Command Line Tools (xcode-select --install).
+Linux: Install GCC and Make (sudo apt-get install build-essential on Ubuntu).
+Windows: Install MinGW-w64.
+Missing Python Dependencies:
 
-For further assistance, please open an issue on our GitHub repository.
-If you successfully compile the library on macOS or Windows and would like to contribute build scripts, please open a pull request!
-```
+bash
+Copy code
+pip install numpy scipy
+OpenMP on macOS: If you encounter issues with OpenMP, you may need to install libomp:
+
+bash
+Copy code
+brew install libomp
+Cleaning Build Artifacts: If you're encountering issues with old builds, try cleaning the build directory:
+
+bash
+Copy code
+make clean
+make
+Citation
+If you use this package in your research, please cite the following paper:
+
+yaml
+Copy code
+Yadav, V. and Michalak, A. M.: Technical Note: Improving the computational efficiency of sparse matrix multiplication in linear atmospheric inverse problems, Geosci. Model Dev. Discuss., doi:10.5194/gmd-2016-204, 2016.
+Acknowledgments
+This work was supported by the National Science Foundation under Grant No. 1342076. The research was conducted at the Jet Propulsion Laboratory, California Institute of Technology, under a contract between the Carnegie Institution of Washington and NASA.
+
+License
+This package is released under the MIT License.
+
+Contact
+For questions or support, please contact Vineet Yadav at yadavvineet@gmail.com.
+
+
 
