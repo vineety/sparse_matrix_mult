@@ -107,6 +107,10 @@ Once you have access to g++, navigate to the root folder of the package and run 
 
 mingw32-make -f Makefile.windows_mingw
 
+Anaconda and Conda Command Prompt Installation
+For pip install try installing from conda environment in Anaconda. Just navigate to directory where you have the package and run pip install .e . -v
+check if dll file is created
+
 ```
 
 ### Troubleshooting
