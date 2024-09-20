@@ -144,5 +144,47 @@ This package is released under the MIT License.
 
 For questions or support, please contact Vineet Yadav at yadavvineet@gmail.com.
 
+Quick Example
+Here's a real example from our test suite that demonstrates the package in action, including performance measurements:
+pythonCopyimport numpy as np
+from scipy import sparse
+from sparse_matrix_mult import sparse_matrix_multiply
+import time
+
+def test_sparse_multiply_performance():
+    # Create two sparse matrices
+    size = 10000
+    density = 0.01
+    A = sparse.random(size, size, density=density, format='csr')
+    B = sparse.random(size, size, density=density, format='csr')
+
+    # Multiply using our package
+    start_time = time.time()
+    result_our = sparse_matrix_multiply(A, B, output_format='sparse', symmetric=False)
+    our_time = time.time() - start_time
+
+    # Multiply using SciPy
+    start_time = time.time()
+    result_scipy = A.dot(B)
+    scipy_time = time.time() - start_time
+
+    # Verify results
+    assert np.allclose(result_our.toarray(), result_scipy.toarray(), rtol=1e-5, atol=1e-8)
+    
+    # Check sparsity
+    nnz_our = result_our.nnz
+    nnz_scipy = result_scipy.nnz
+    assert nnz_our == nnz_scipy, f"NNZ mismatch: Ours {nnz_our}, SciPy {nnz_scipy}"
+
+    # Report times and speedup
+    print(f"Our package time: {our_time:.4f} seconds")
+    print(f"SciPy time: {scipy_time:.4f} seconds")
+    print(f"Speedup: {scipy_time / our_time:.2f}x")
+    print("Test passed: Results match and sparsity is preserved!")
+
+# Run the test
+test_sparse_multiply_performance()
+
+
 
 
