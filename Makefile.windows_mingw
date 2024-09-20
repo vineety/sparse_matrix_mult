@@ -28,6 +28,7 @@ all: $(LIBRARY)
 	@echo "3. Under System Variables, find Path, select it, and click Edit."
 	@echo "4. Click New, and add the path to your MinGW bin folder (e.g., C:\\mingw-w64\\bin)."
 	@echo "5. Click OK to save the changes."
+	@echo "6. IF COMPILATION SUCCEDS THERE SHOULD BE DLL FILE IN lib DIRECTORY in sparse_matrix_mult folder."
 
 $(LIBRARY): $(SOURCES)
 	@if not exist $(LIB_DIR) mkdir $(LIB_DIR)
