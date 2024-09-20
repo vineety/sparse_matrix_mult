@@ -23,7 +23,7 @@ all: $(LIBRARY)
 	@echo "Ensure you're running this script from the root directory."
 	@echo "Install MinGW from https://www.mingw-w64.org."
 	@echo "To set up environment variables on Windows:"
-	@echo "1. Right-click This PC or My Computer, and select Properties."
+	@echo "1. Search for Environmental Variables."
 	@echo "2. Click Advanced system settings → Environment Variables."
 	@echo "3. Under System Variables, find Path, select it, and click Edit."
 	@echo "4. Click New, and add the path to your MinGW bin folder (e.g., C:\\mingw-w64\\bin)."
