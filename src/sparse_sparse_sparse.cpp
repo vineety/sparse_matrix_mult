@@ -2,7 +2,7 @@
 #include <stdlib.h>      // Standard library for memory allocation and management
 #include <string.h>      // String manipulation functions
 #include <math.h>        // Math library for functions like ceil
-#ifdef USE_OPENMP         // If OpenMP is enabled, include OpenMP header
+#ifdef _OPENMP         // If OpenMP is enabled, include OpenMP header
 #include <omp.h>
 #endif
 #include "matrix_def.h"   // Custom header file for matrix structure definitions
@@ -52,7 +52,7 @@ void sparse_sym(const struct sparsemat* const matrixA, const struct sparsemat* c
     return;
   }
 
-#ifdef USE_OPENMP
+#ifdef _OPENMP
   threads = omp_get_max_threads(); // Get the number of available threads for parallelism
 #else
   threads = 1; // If OpenMP is not enabled, set to a single thread
@@ -87,7 +87,7 @@ void sparse_sym(const struct sparsemat* const matrixA, const struct sparsemat* c
   }
   
   // Parallel computation block using OpenMP
-#ifdef USE_OPENMP
+#ifdef _OPENMP
 #pragma omp parallel firstprivate(imemSize) private(i)
 #endif
 {
@@ -102,7 +102,7 @@ void sparse_sym(const struct sparsemat* const matrixA, const struct sparsemat* c
     sparsework_sym(matrixA, matrixB, &dimensions[i], rowDistribute.array[i], rowDistribute.array[i + rowDistribute.rows], imemSize);
     
     // Atomically update the total number of non-zero elements in matrixC
-#ifdef USE_OPENMP
+#ifdef _OPENMP
 #pragma omp atomic
 #endif
     matrixC->nzmax += dimensions[i].nzmax;
@@ -185,7 +185,7 @@ void sparse_nosym(const struct sparsemat* const matrixA, const struct sparsemat*
     }
     
     // Determine the number of threads to use, either OpenMP parallel threads or 1 if OpenMP is not enabled
-#ifdef USE_OPENMP
+#ifdef _OPENMP
     threads = omp_get_max_threads();  // Get the number of available threads
 #else
     threads = 1;  // Single thread if OpenMP is not enabled
@@ -225,11 +225,11 @@ void sparse_nosym(const struct sparsemat* const matrixA, const struct sparsemat*
     }
 
     // Parallel block to perform the actual sparse matrix multiplication using OpenMP
-#ifdef USE_OPENMP
+#ifdef _OPENMP
 #pragma omp parallel firstprivate(imemSize) private(i)  // Parallel region with imemSize as firstprivate and i as private
 #endif
     {
-#ifdef USE_OPENMP
+#ifdef _OPENMP
 #pragma omp for schedule(dynamic)  // Distribute iterations dynamically across threads
 #endif
         for (i = 0; i < subDivision; ++i)
@@ -241,7 +241,7 @@ void sparse_nosym(const struct sparsemat* const matrixA, const struct sparsemat*
             sparsework_nosym(matrixA, matrixB, &dimensions[i], rowDistribute.array[i], rowDistribute.array[i + rowDistribute.rows], imemSize);
 
             // Atomically update the total number of non-zero elements in matrixC
-#ifdef USE_OPENMP
+#ifdef _OPENMP
 #pragma omp atomic
 #endif
             matrixC->nzmax += dimensions[i].nzmax;
