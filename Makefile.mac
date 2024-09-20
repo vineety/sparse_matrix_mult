@@ -1,94 +1,38 @@
-# Use clang++ as the compiler
 CXX := clang++
-
-# Compiler flags:
-# -Wall: enable all warnings
-# -O3: optimize code aggressively
-# -fPIC: generate position-independent code (required for shared libraries)
-# -std=c++11: use the C++11 standard
-CXXFLAGS := -Wall -O3 -fPIC -std=c++11
-
-# Linker flags for creating shared libraries
-LDFLAGS := -shared
-
-# Include directories for header files
+CXXFLAGS := -std=c++11 -Wall -O3 -fPIC -Xpreprocessor -fopenmp
 INCLUDES := -I./include
+SOURCES := src/memfunctions.cpp src/sparse_sparse_dense.cpp src/sparse_sparse_sparse.cpp src/sparsework.cpp src/workdivision.cpp
+LIBDIR := sparse_matrix_mult/lib
 
-# Additional libraries (currently empty)
-LIBS :=
+.PHONY: all clean
 
-# Define directories for source, object, and library files
-SRC_DIR := src
-OBJ_DIR := obj
-LIB_DIR := sparse_matrix_mult/lib
+all: $(LIBDIR)/libsparse_arm64.dylib $(LIBDIR)/libsparse_x86_64.dylib
 
-# Get all .cpp source files from the source directory
-SOURCES := $(wildcard $(SRC_DIR)/*.cpp)
+$(LIBDIR)/libsparse_arm64.dylib: $(SOURCES)
+	@mkdir -p $(LIBDIR)
+	$(CXX) $(CXXFLAGS) \
+	-arch arm64 \
+	$(INCLUDES) \
+	-I$$(brew --prefix libomp)/include \
+	$^ \
+	-shared \
+	-L$$(brew --prefix libomp)/lib \
+	-lomp \
+	-o $@ \
+	-target arm64-apple-macos11
 
-# Convert source file names to object file names in the obj directory
-OBJECTS := $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR)/%.o,$(SOURCES))
+$(LIBDIR)/libsparse_x86_64.dylib: $(SOURCES)
+	@mkdir -p $(LIBDIR)
+	$(CXX) $(CXXFLAGS) \
+	-arch x86_64 \
+	$(INCLUDES) \
+	-I/usr/local/opt/libomp/include \
+	$^ \
+	-shared \
+	-L/usr/local/opt/libomp/lib \
+	-lomp \
+	-o $@ \
+	-target x86_64-apple-macos10.15
 
-# Detect system architecture (arm64 or x86_64)
-UNAME_M := $(shell uname -m)
-ifeq ($(UNAME_M),arm64)
-    ARCH := arm64
-    TARGET := -target arm64-apple-macos11  # Target ARM architecture for macOS 11
-else
-    ARCH := x64
-    TARGET := -target x86_64-apple-macos10.12  # Target x64 architecture for macOS 10.12
-endif
-
-# Define the output library file based on the architecture
-LIBRARY := $(LIB_DIR)/libsparse_$(ARCH).dylib
-
-# Check if OpenMP support is available by compiling a test
-OPENMP_TEST := $(shell $(CXX) -Xpreprocessor -fopenmp -dM -E - < /dev/null 2>&1 | grep -c OpenMP)
-
-# Conditional compilation: Add OpenMP flags and libraries if available
-ifeq ($(OPENMP_TEST),0)
-    $(info OpenMP not available. Compiling without OpenMP support.)
-else
-    $(info OpenMP is available. Compiling with OpenMP support.)
-    # Add OpenMP flags to CXXFLAGS
-    CXXFLAGS += -Xpreprocessor -fopenmp
-    # Include libomp based on architecture (Homebrew for ARM, /usr/local for x64)
-    ifeq ($(ARCH),arm64)
-        BREW_PREFIX := $(shell brew --prefix)
-        INCLUDES += -I$(BREW_PREFIX)/opt/libomp/include
-        LIBS += -L$(BREW_PREFIX)/opt/libomp/lib -lomp
-    else
-        INCLUDES += -I/usr/local/opt/libomp/include
-        LIBS += -L/usr/local/opt/libomp/lib -lomp
-    endif
-endif
-
-# Define phony targets that are not actual files
-.PHONY: all clean install
-
-# Default target: Build the shared library
-all: $(LIBRARY)
-
-# Rule for linking object files into the shared library
-$(LIBRARY): $(OBJECTS) | $(LIB_DIR)
-	$(CXX) $(LDFLAGS) $(TARGET) -arch $(ARCH) $^ -o $@ $(LIBS)
-
-# Rule for compiling .cpp source files into .o object files
-$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp | $(OBJ_DIR)
-	$(CXX) $(CXXFLAGS) $(INCLUDES) $(TARGET) -arch $(ARCH) -c $< -o $@
-
-# Rule for creating object and library directories if they don't exist
-$(OBJ_DIR) $(LIB_DIR):
-	mkdir -p $@
-
-# Clean target: Remove object and library directories
 clean:
-	rm -rf $(OBJ_DIR) $(LIB_DIR)
-
-# Install target: Copy the built library to a specified prefix directory
-install: $(LIBRARY)
-	install -d $(DESTDIR)$(PREFIX)/lib
-	install -m 755 $(LIBRARY) $(DESTDIR)$(PREFIX)/lib
-
-# Print the value of any Makefile variable (for debugging)
-print-%:
-	@echo $* = $($*)
+	rm -rf $(LIBDIR)
