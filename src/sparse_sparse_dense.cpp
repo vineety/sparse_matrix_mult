@@ -9,51 +9,76 @@
 #include "functions.h"  // Include custom functions
 
 // Function to multiply two sparse matrices in CSR format and produce a dense symmetric upper triangular matrix
-void dense_sym(const struct sparsemat* const matrixa, const struct sparsemat* const matrixb, struct darray* const matrixc)
-/* This routine multiplies two sparse matrices in CSR format
-with zero-based indexing and produces a dense upper triangular
-matrix based on the assumption that multiplication of two sparse
-matrices results in a symmetric matrix */
+// Optimized function to multiply two sparse matrices in CSR format and produce a dense symmetric upper triangular matrix
+void dense_sym(const struct sparsemat* const matrixa, const struct sparsemat* const matrixb,
+               struct darray* const matrixc)
 {
-    int i, j, k, col_num_a, col_num_b, konstant;  // Declare variables for loop indices, column indices, and constants
-    double value;  // Temporary variable to hold matrix values during computation
-    
+    // Variables for loop indices and calculations
+    int i, j, k;
+    int col_num_a, col_num_b;
+    double value;
+
     // Set matrixc dimensions to match the result of multiplying matrixa and matrixb
     matrixc->rows = matrixa->rows;
     matrixc->cols = matrixb->cols;
-    
-    // Allocate memory for the dense result matrix (upper triangular matrix)
-    matrixc->array = (double*)calloc(matrixa->rows * matrixb->cols, sizeof(double));
-    
-#ifdef _OPENMP
-# pragma omp parallel for private (i,j,k,value,col_num_a,col_num_b,konstant)  // Parallelize the outer loop using OpenMP
-#endif
-    // Iterate over the rows of matrixa
-    for (i = 0; i < matrixa->rows; i++)
-    {
-        konstant = i * matrixa->rows;  // Calculate the starting index in the dense matrix for row i
-        
-        // Loop through the non-zero elements of row i in matrixa
-        for (j = matrixa->rowPtr[i]; j <= matrixa->rowPtr[i + 1] - 1; j++)
-        {
-            value = matrixa->values[j];  // Get the value of the current element in matrixa
-            col_num_a = matrixa->colInd[j];  // Get the column index of the current element in matrixa
-            
-            // Multiply the current element of matrixa with the corresponding elements of matrixb
-            for (k = matrixb->rowPtr[col_num_a]; k <= matrixb->rowPtr[col_num_a + 1] - 1; k++)
-            {
-                col_num_b = matrixb->colInd[k];  // Get the column index of the current element in matrixb
-                
-                // Update the upper triangular part of the result matrix only if i <= col_num_b
-                if (i <= col_num_b)
-                    matrixc->array[konstant + col_num_b] += value * matrixb->values[k];
+
+    // Calculate the total number of elements in the result matrix
+    size_t matrix_size = (size_t)matrixc->rows * matrixc->cols;
+
+    // Allocate memory for the dense result matrix (flattened array)
+    // Using calloc to initialize all elements to zero
+    matrixc->array = (double*)calloc(matrix_size, sizeof(double));
+    if (!matrixc->array) {
+        fprintf(stderr, "Memory allocation failed for result matrix\n");
+        return;
+    }
+
+    // OpenMP parallelization over the outer loop (rows of matrixa)
+    #ifdef _OPENMP
+    #pragma omp parallel for private(i, j, k, value, col_num_a, col_num_b) schedule(static)
+    #endif
+    for (i = 0; i < matrixa->rows; i++) {
+        // Compute the starting index for row i in the flattened result matrix
+        size_t row_offset = (size_t)i * matrixc->cols;
+
+        // Loop through non-zero elements in row i of matrixa
+        for (j = matrixa->rowPtr[i]; j < matrixa->rowPtr[i + 1]; j++) {
+            value = matrixa->values[j];       // Value of the current element in matrixa
+            col_num_a = matrixa->colInd[j];   // Column index of the current element in matrixa
+
+            // Access the non-zero elements in row col_num_a of matrixb
+            int row_start_b = matrixb->rowPtr[col_num_a];
+            int row_end_b = matrixb->rowPtr[col_num_a + 1];
+
+            // Loop through non-zero elements in the corresponding row of matrixb
+            for (k = row_start_b; k < row_end_b; k++) {
+                col_num_b = matrixb->colInd[k];    // Column index in matrixb
+                double product = value * matrixb->values[k]; // Compute the product once
+
+                // Since the result matrix is symmetric, we only need to compute the upper triangular part
+                if (i <= col_num_b) {
+                    // Update the result matrix at position (i, col_num_b)
+                    matrixc->array[row_offset + col_num_b] += product;
+                }
+                // Optional: If you need the full symmetric matrix, uncomment the following lines
+                /*
+                else {
+                    // Update the symmetric position in the lower triangular part
+                    size_t sym_index = (size_t)col_num_b * matrixc->cols + i;
+                    matrixc->array[sym_index] += product;
+                }
+                */
             }
         }
     }
 }
 
+
+
 // Function to multiply two sparse matrices in CSR format and produce a non-symmetric dense matrix
-void dense_nosym(const struct sparsemat* const matrixa, const struct sparsemat* const matrixb, struct darray* const matrixc) {
+void dense_nosym(const struct sparsemat* const matrixa, const struct sparsemat* const matrixb,
+                 struct darray* const matrixc)
+{
     // Check for matrix dimension compatibility for multiplication
     if (matrixa->cols != matrixb->rows) {
         fprintf(stderr, "Error: Matrix dimensions are incompatible for multiplication.\n");
@@ -64,71 +89,45 @@ void dense_nosym(const struct sparsemat* const matrixa, const struct sparsemat* 
     matrixc->rows = matrixa->rows;
     matrixc->cols = matrixb->cols;
     
-    // Allocate memory for the dense result matrix
-    matrixc->array = (double*)calloc((size_t)matrixc->rows * (size_t)matrixc->cols, sizeof(double));
+    // Calculate the total number of elements in the result matrix
+    size_t matrix_size = (size_t)matrixc->rows * (size_t)matrixc->cols;
+
+    // Allocate memory for the dense result matrix (flattened array)
+    // Using calloc to initialize all elements to zero
+    matrixc->array = (double*)calloc(matrix_size, sizeof(double));
     if (matrixc->array == NULL) {
         fprintf(stderr, "Error: Memory allocation failed for matrixc->array.\n");
         return;
     }
-    
-    int memory_error_flag = 0;  // Flag to track memory allocation errors for thread-local arrays
-#ifdef _OPENMP
-#pragma omp parallel shared(memory_error_flag)  // Start parallel region with shared memory_error_flag
-#endif
-{
-    // Allocate a local result array for each thread to avoid race conditions
-    double* local_result = (double*)calloc(matrixc->cols, sizeof(double));
-    if (local_result == NULL) {
-        // Handle memory allocation error for local_result
-#ifdef _OPENMP
-        fprintf(stderr, "Error: Memory allocation for local result failed in thread %d.\n", omp_get_thread_num());
-#else
-        fprintf(stderr, "Error: Memory allocation for result failed");
-#endif
-        memory_error_flag = 1;  // Set the memory error flag
-    }
-    else {
-        int i, j, k, col_num_a, col_num_b;  // Declare variables for loop indices and column indices
-        double value;  // Temporary variable to hold matrix values during computation
 
-#ifdef _OPENMP
-#pragma omp for schedule(guided)  // Use guided scheduling for the parallel loop
-#endif
-        // Iterate over the rows of matrixa
-        for (i = 0; i < matrixa->rows; i++) {
-            if (!memory_error_flag) {  // Only execute if no memory error has occurred
-                memset(local_result, 0, matrixc->cols * sizeof(double));  // Initialize the local result array for the current row
-            
-                // Loop through the non-zero elements of row i in matrixa
-                for (j = matrixa->rowPtr[i]; j < matrixa->rowPtr[i + 1]; j++) {
-                    value = matrixa->values[j];  // Get the value of the current element in matrixa
-                    col_num_a = matrixa->colInd[j];  // Get the column index of the current element in matrixa
+    // OpenMP parallelization over the outer loop (rows of matrixa)
+    // Each thread works on a separate row to avoid race conditions
+    #ifdef _OPENMP
+    #pragma omp parallel for schedule(static)
+    #endif
+    for (int i = 0; i < matrixa->rows; i++) {
+        // Compute the starting index for row i in the flattened result matrix
+        size_t row_offset = (size_t)i * matrixc->cols;
 
-#ifdef _OPENMP
-#pragma omp simd  // SIMD parallelization for the inner loop (vectorization)
-#endif
-                    // Multiply the current element of matrixa with the corresponding elements of matrixb
-                    for (k = matrixb->rowPtr[col_num_a]; k < matrixb->rowPtr[col_num_a + 1]; k++) {
-                        col_num_b = matrixb->colInd[k];  // Get the column index of the current element in matrixb
-                        local_result[col_num_b] += value * matrixb->values[k];  // Update the local result array
-                    }
-                }
-            
-                // Copy the local result for the current row into the global result array (matrixc)
-                memcpy(&matrixc->array[i * matrixc->cols], local_result, matrixc->cols * sizeof(double));
+        // Loop through non-zero elements in row i of matrixa
+        for (int j = matrixa->rowPtr[i]; j < matrixa->rowPtr[i + 1]; j++) {
+            double value = matrixa->values[j];     // Value of the current element in matrixa
+            int col_num_a = matrixa->colInd[j];    // Column index of the current element in matrixa
+
+            // Access the non-zero elements in row col_num_a of matrixb
+            int row_start_b = matrixb->rowPtr[col_num_a];
+            int row_end_b = matrixb->rowPtr[col_num_a + 1];
+
+            // Loop through non-zero elements in the corresponding row of matrixb
+            for (int k = row_start_b; k < row_end_b; k++) {
+                int col_num_b = matrixb->colInd[k];     // Column index in matrixb
+                double product = value * matrixb->values[k]; // Compute the product
+
+                // Update the result matrix at position (i, col_num_b)
+                matrixc->array[row_offset + col_num_b] += product;
             }
         }
-    
-        free(local_result);  // Free the memory allocated for the local result array
     }
-}
-
-// Handle memory error by freeing the allocated memory for matrixc and setting its array to NULL
-if (memory_error_flag) {
-    free(matrixc->array);
-    matrixc->array = NULL;
-    return;
-}
 }
 
 
