@@ -2,10 +2,6 @@
 CXX := g++
 
 # Compiler flags: 
-# -Wall: enable all warnings
-# -O3: optimization level 3 (aggressive optimizations)
-# -fPIC: position-independent code (needed for shared libraries)
-# -std=c++11: use the C++11 standard
 CXXFLAGS := -Wall -O3 -fPIC -std=c++11
 
 # Linker flags for creating shared libraries
@@ -14,7 +10,7 @@ LDFLAGS := -shared
 # Include directories for headers
 INCLUDES := -I./include
 
-# Additional libraries to link with (currently empty)
+# Additional libraries to link with
 LIBS :=
 
 # Directories for source files, object files, and libraries
@@ -29,42 +25,52 @@ SOURCES := $(wildcard $(SRC_DIR)/*.cpp)
 OBJECTS := $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR)/%.o,$(SOURCES))
 
 # Define the output shared library file
-LIBRARY := $(LIB_DIR)/libsparse.so
-
-# Check if OpenMP support is available by running a test
-OPENMP_TEST := $(shell $(CXX) -fopenmp -dM -E - < /dev/null 2>&1 | grep -c OpenMP)
-
-# Conditional compilation: Add OpenMP support if available
-ifeq ($(OPENMP_TEST),0)
-    $(info OpenMP not available. Compiling without OpenMP support.)
-else
-    $(info OpenMP is available. Compiling with OpenMP support.)
-    # Add OpenMP flags and libraries if supported
-    CXXFLAGS += -fopenmp
-    LIBS += -lgomp
-endif
+LIBRARY := $(LIB_DIR)/libsparse_x86_64.so
 
 # Targets
+.PHONY: all clean openmp_check
 
 # Default target: Build the shared library
-.PHONY: all clean
-all: $(LIBRARY)
+all: openmp_check $(LIBRARY)
+
+# OpenMP check target
+openmp_check:
+	@if echo "int main() { return 0; }" | $(CXX) -fopenmp -x c++ -o /dev/null - >/dev/null 2>&1; then \
+		echo "OpenMP is available. Compiling with OpenMP support."; \
+		echo "CXXFLAGS += -fopenmp" >> .openmp_flags; \
+		echo "LDFLAGS += -fopenmp" >> .openmp_flags; \
+	else \
+		echo "OpenMP not available. Compiling without OpenMP support."; \
+		rm -f .openmp_flags; \
+	fi
+
+# Include OpenMP flags if available
+-include .openmp_flags
 
 # Link object files into the shared library
-$(LIBRARY): $(OBJECTS) | $(LIB_DIR)
+$(LIBRARY): $(OBJECTS)
+	@if [ ! -d "$(LIB_DIR)" ]; then \
+		echo "Error: $(LIB_DIR) does not exist. Please ensure your Python package structure is correct."; \
+		exit 1; \
+	fi
 	$(CXX) $(LDFLAGS) $^ -o $@ $(LIBS)
 
 # Compile .cpp source files into .o object files
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp | $(OBJ_DIR)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
 
-# Create the obj and lib directories if they don't exist
-$(OBJ_DIR) $(LIB_DIR):
+# Create the obj directory if it doesn't exist
+$(OBJ_DIR):
 	mkdir -p $@
 
-# Clean target: Remove object files and libraries
+# Clean target: Remove object files and OpenMP flags file
+# Clean target: Remove object files and OpenMP flags file
 clean:
-	rm -rf $(OBJ_DIR) $(LIB_DIR)
+	@echo "Cleaning up object files and libraries..."
+	@if [ -d "$(OBJ_DIR)" ]; then rm -rf $(OBJ_DIR); fi
+	@if [ -f ".openmp_flags" ]; then rm -f .openmp_flags; fi
+	@if [ -f "$(LIBRARY)" ]; then rm -f $(LIBRARY); fi
+
 
 # Print the value of any Makefile variable (for debugging)
 print-%:
