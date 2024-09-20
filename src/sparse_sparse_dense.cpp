@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#ifdef USE_OPENMP
+#ifdef _OPENMP
 #include <omp.h>  // Include OpenMP for parallelization
 #endif
 #include "matrix_def.h"  // Include custom matrix definitions
@@ -25,7 +25,7 @@ matrices results in a symmetric matrix */
     // Allocate memory for the dense result matrix (upper triangular matrix)
     matrixc->array = (double*)calloc(matrixa->rows * matrixb->cols, sizeof(double));
     
-#ifdef USE_OPENMP
+#ifdef _OPENMP
 # pragma omp parallel for private (i,j,k,value,col_num_a,col_num_b,konstant)  // Parallelize the outer loop using OpenMP
 #endif
     // Iterate over the rows of matrixa
@@ -72,7 +72,7 @@ void dense_nosym(const struct sparsemat* const matrixa, const struct sparsemat* 
     }
     
     int memory_error_flag = 0;  // Flag to track memory allocation errors for thread-local arrays
-#ifdef USE_OPENMP
+#ifdef _OPENMP
 #pragma omp parallel shared(memory_error_flag)  // Start parallel region with shared memory_error_flag
 #endif
 {
@@ -80,7 +80,7 @@ void dense_nosym(const struct sparsemat* const matrixa, const struct sparsemat* 
     double* local_result = (double*)calloc(matrixc->cols, sizeof(double));
     if (local_result == NULL) {
         // Handle memory allocation error for local_result
-#ifdef USE_OPENMP
+#ifdef _OPENMP
         fprintf(stderr, "Error: Memory allocation for local result failed in thread %d.\n", omp_get_thread_num());
 #else
         fprintf(stderr, "Error: Memory allocation for result failed");
@@ -91,7 +91,7 @@ void dense_nosym(const struct sparsemat* const matrixa, const struct sparsemat* 
         int i, j, k, col_num_a, col_num_b;  // Declare variables for loop indices and column indices
         double value;  // Temporary variable to hold matrix values during computation
 
-#ifdef USE_OPENMP
+#ifdef _OPENMP
 #pragma omp for schedule(guided)  // Use guided scheduling for the parallel loop
 #endif
         // Iterate over the rows of matrixa
@@ -104,7 +104,7 @@ void dense_nosym(const struct sparsemat* const matrixa, const struct sparsemat* 
                     value = matrixa->values[j];  // Get the value of the current element in matrixa
                     col_num_a = matrixa->colInd[j];  // Get the column index of the current element in matrixa
 
-#ifdef USE_OPENMP
+#ifdef _OPENMP
 #pragma omp simd  // SIMD parallelization for the inner loop (vectorization)
 #endif
                     // Multiply the current element of matrixa with the corresponding elements of matrixb
@@ -155,7 +155,7 @@ void triple_product(struct sparsemat* H, struct sparsemat* Q, struct darray* C, 
   }
   
   // Get the number of available threads for parallel execution
-#ifdef USE_OPENMP
+#ifdef _OPENMP
   int num_threads = omp_get_max_threads();
 #else
   int num_threads = 1;  // Single thread if OpenMP is not enabled
@@ -167,11 +167,11 @@ void triple_product(struct sparsemat* H, struct sparsemat* Q, struct darray* C, 
     thread_local_C[t] = (double*)calloc(n * n, sizeof(double));  // Allocate local result matrix for each thread
   }
 
-#ifdef USE_OPENMP
+#ifdef _OPENMP
 #pragma omp parallel
 #endif
 {
-#ifdef USE_OPENMP
+#ifdef _OPENMP
   int thread_id = omp_get_thread_num();  // Get the thread ID for this thread
 #else
   int thread_id = 0;  // Single thread if OpenMP is not enabled
@@ -180,7 +180,7 @@ void triple_product(struct sparsemat* H, struct sparsemat* Q, struct darray* C, 
   double* local_C = thread_local_C[thread_id];  // Thread-local matrix C
   
   // Iterate over each row i of matrix H
-#ifdef USE_OPENMP
+#ifdef _OPENMP
 #pragma omp for schedule(dynamic, 64)
 #endif
   for (int i = 0; i < n; i++) {
@@ -190,7 +190,7 @@ void triple_product(struct sparsemat* H, struct sparsemat* Q, struct darray* C, 
       double h_ij = H->values[jp];  // Value at H(i, j)
       
       // Multiply H(i, j) with corresponding row in Q
-#ifdef USE_OPENMP
+#ifdef _OPENMP
 #pragma omp simd
 #endif
       for (int kp = Q->rowPtr[j]; kp < Q->rowPtr[j + 1]; kp++) {
@@ -204,7 +204,7 @@ void triple_product(struct sparsemat* H, struct sparsemat* Q, struct darray* C, 
       double sum = 0.0;
       
       // Multiply temp_values by the corresponding row of H and accumulate into local_C
-#ifdef USE_OPENMP
+#ifdef _OPENMP
 #pragma omp simd reduction(+:sum)
 #endif
       for (int jp = H->rowPtr[k]; jp < H->rowPtr[k + 1]; jp++) {
@@ -224,7 +224,7 @@ void triple_product(struct sparsemat* H, struct sparsemat* Q, struct darray* C, 
 }
 
 // Reduction step: Combine the thread-local matrices into the final result matrix C
-#ifdef USE_OPENMP
+#ifdef _OPENMP
 #pragma omp parallel for schedule(static)
 #endif
 for (int i = 0; i < C->rows; i++) {
@@ -232,7 +232,7 @@ for (int i = 0; i < C->rows; i++) {
     double sum = 0.0;
     
     // Sum the corresponding entries from all thread-local matrices
-#ifdef USE_OPENMP
+#ifdef _OPENMP
 #pragma omp simd reduction(+:sum)
 #endif
     for (int t = 0; t < num_threads; ++t) {
