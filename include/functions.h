@@ -19,7 +19,7 @@
 #define MAX_CHUNK_SIZE 16
 
 // OpenMP-specific includes and definitions for parallel processing.
-#ifdef USE_OPENMP
+#ifdef _OPENMP
     #include <omp.h>  // Include OpenMP headers when parallelization is enabled.
     // Macro to get the number of threads available in the OpenMP environment.
     #define OMP_NUM_THREADS omp_get_max_threads()
