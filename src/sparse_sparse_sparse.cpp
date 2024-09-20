@@ -188,7 +188,7 @@ void sparse_nosym(const struct sparsemat* const matrixA, const struct sparsemat*
 #ifdef _OPENMP
     threads = omp_get_max_threads();  // Get the number of available threads
 #else
-    threads = 1;  // Single thread if OpenMP is not enabled
+    //threads = 1;  // Single thread if OpenMP is not enabled
 #endif
 
     // Set subdivision of rows for parallel processing based on the number of threads
