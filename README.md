@@ -13,7 +13,7 @@ The package implements parallelized matrix multiplication routines using OpenMP 
 - **Triple Product Calculation**: Efficient computation of triple products A×B×A^T, often used in covariance and uncertainty calculations.
 
 ## Recommendation
-- You will gain most benefit if you use openmp especially on computers with many cores and by using routines that result in symmetric matrices or dense matrices. These operations are common and quite useful. Performance will also vary based on compilers and sparsity patterns. If you are doing these operations serially then stick to scipy routines as they would be faster because they call MKL which 
+- You will gain most benefit if you use openmp especially on computers with many cores and by using routines that result in [symmetric matrices or dense matrices]. These operations are common and quite useful and my recommendation is to use the library for these forms of calculations. Performance will also vary based on compilers and sparsity patterns. If you are doing these operations serially then stick to scipy routines as they would be faster because they call MKL which 
 is hardware specific library. 
 - In case of triple sparse product you might see very large gains. In python result of sparsexsparse is sparse but in these routines it can be dense or sparse. 
 Sometimes it may happen that setup.py /pip install compiles the library without openmp (check compilation messages) in that case you should compile the code using makefile and put the dylib, dll or .so file in appropriate directory after installing it through pip.
