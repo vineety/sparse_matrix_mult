@@ -2,7 +2,7 @@
 
 ## Overview
 
-This repository provides efficient sparse-sparse (SS) matrix multiplication algorithms designed for use in linear atmospheric inverse problems. The package improves computational efficiency when calculating covariance matrices for observations and a posteriori uncertainties.
+This repository provides efficient sparse-sparse (SS) matrix multiplication algorithms designed for use in various problems. The package improves computational efficiency when calculating quandratic product involving covariance matrices. But the routines are general purpose and can be used in many scenarios. 
 
 The package implements parallelized matrix multiplication routines using OpenMP for enhanced performance on multi-core processors.
 
@@ -13,8 +13,11 @@ The package implements parallelized matrix multiplication routines using OpenMP 
 - **Triple Product Calculation**: Efficient computation of triple products A×B×A^T, often used in covariance and uncertainty calculations.
 
 ## Recommendation
--You will gain most benefit if you use openmp especially on computers with many cores and by using routines that result in symmetric matrices or dense matrices. These operations are common and quite useful. Performance will also vary based on compilers and sparsity patterns
+-You will gain most benefit if you use openmp especially on computers with many cores and by using routines that result in symmetric matrices or dense matrices. These operations are common and quite useful. Performance will also vary based on compilers and sparsity patterns. If you are doing these operations serially then stick to scipy routines as they would be faster because they call MKL which 
+is hardware specific library. 
 -In case of triple sparse product you might see very large gains. In python result of sparsexsparse is sparse but in these routines it can be dense or sparse. 
+-Sometimes it may happen that setup.py /pip install compiles the library without openmp (check compilation messages) in that case you should compile the code using makefile and put the dylib, dll or .so file in appropriate directory after installing it through pip.
+-Finally this code can be further optimized by using AVX intrinsics but for which you need to know the system on which you would be deploying the package. Therefore I did not modify the code based on AVX intrinsics. 
 
 ## Requirements
 
@@ -228,6 +231,7 @@ pytest
 test_sparse_multiply_performance()
 
 # Additional Windows Installation Directions
+We were successfully able to compile the libraries into dll through Microsoft Visual Studio and Mingw but it require some effort. 
 Instructions for Using MinGW and Compiling the Code:
 To compile the package using MinGW, follow these steps:
 
@@ -288,6 +292,7 @@ Verifying Installation and Example Use Cases
 An example script "matrix_ops_script.py" is also included to test to compare results against numpy and to demonstrate how to use the code. For ideal performance compile with openmp.
 For further assistance, please open an issue on our GitHub repository.
 If you successfully compile the library on macOS or Windows and would like to contribute build scripts, please open a pull request!
+Additionally if you need any help contact me through email. 
 
 
 
