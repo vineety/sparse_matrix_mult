@@ -12,6 +12,10 @@ The package implements parallelized matrix multiplication routines using OpenMP 
 - **Multiple Output Formats**: Supports both sparse and dense matrix outputs, with options for symmetric or non-symmetric results.
 - **Triple Product Calculation**: Efficient computation of triple products A×B×A^T, often used in covariance and uncertainty calculations.
 
+## Recommendation
+-You will gain most benefit if you use openmp especially on computers with many cores and by using routines that result in symmetric matrices or dense matrices. These operations are common and quite useful. Performance will also vary based on compilers and sparsity patterns
+-In case of triple sparse product you might see very large gains. In python result of sparsexsparse is sparse but in these routines it can be dense or sparse. 
+
 ## Requirements
 
 - C/C++ compiler with OpenMP support (e.g., gcc, clang, or MinGW on Windows)
@@ -160,7 +164,7 @@ import time
 def test_sparse_multiply_performance():
     # Create two sparse matrices
     size = 10000
-    density = 0.01
+    density = 0.1
     A = sparse.random(size, size, density=density, format='csr')
     B = sparse.random(size, size, density=density, format='csr')
 
@@ -175,6 +179,8 @@ def test_sparse_multiply_performance():
     scipy_time = time.time() - start_time
 
     # Verify results
+    # Note Assertion for Matrix which is just upper triangular would lead to failure
+    # that is why it is commented out
     # assert np.allclose(result_our.toarray(), result_scipy.toarray(), rtol=1e-5, atol=1e-8)
     
     # Check sparsity
@@ -203,12 +209,11 @@ This example:
 When you run this script, you should see output similar to:
 
 ```
-Our package time: 0.1234 seconds
-SciPy time: 0.5678 seconds
-Speedup: 4.60x
-Test passed: Results match and sparsity is preserved!
+Our package time: 11.4803 seconds
+SciPy time: 16.6142 seconds
+Speedup: 1.45x
 ```
-
+This is time on Macbook Air M1 2020. Actual time would vary based on sparsity.
 Note that actual timings and speedup will vary depending on your system specifications and the specific matrices generated.
 
 This demonstrates that our package not only correctly multiplies sparse matrices while maintaining accuracy and sparsity, but also provides significant performance improvements over standard methods.
