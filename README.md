@@ -17,7 +17,8 @@ The package implements parallelized matrix multiplication routines using OpenMP 
 is hardware specific library. 
 - In case of triple sparse product you might see very large gains. In python result of sparsexsparse is sparse but in these routines it can be dense or sparse. 
 Sometimes it may happen that setup.py /pip install compiles the library without openmp (check compilation messages) in that case you should compile the code using makefile and put the dylib, dll or .so file in appropriate directory after installing it through pip.
-- Finally this code can be further optimized by using AVX intrinsics but for which you need to know the system on which you would be deploying the package. Therefore I did not modify the code based on AVX intrinsics. 
+- Finally this code can be further optimized by using AVX intrinsics but for which you need to know the system on which you would be deploying the package. Therefore I did not modify the code based on AVX intrinsics.
+- We have tested it extensively on Linux and Mac and on Windows by using Microsoft Visual Studio Based Compiler. 
 
 ## Requirements
 
