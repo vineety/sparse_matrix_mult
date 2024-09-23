@@ -11,6 +11,7 @@ import ctypes
 import numpy as np
 from scipy.sparse import csr_matrix, isspmatrix_csr
 import os
+import re
 import platform
 
 
@@ -70,11 +71,13 @@ class MatrixOpsLibrary:
             cls._instance._load_library()
         return cls._instance
 
+
     def _load_library(self):
         """
         @brief Load the C library based on the platform and architecture.
         This method selects the correct shared library file (.so, .dylib, or .dll)
-        based on the operating system and processor architecture.
+        based on the operating system and processor architecture, with flexibility
+        to handle naming inconsistencies in the library file.
         """
         if self._lib is not None:
             return
@@ -82,6 +85,11 @@ class MatrixOpsLibrary:
         system = platform.system().lower()
         machine = platform.machine().lower()
     
+        # Debugging: Print detected system and machine architecture
+        print(f"Detected system: {system}")
+        print(f"Detected machine architecture: {machine}")
+    
+        # Determine the correct file extension based on the platform
         if system == 'linux':
             extension = 'so'
         elif system == 'darwin':
@@ -91,19 +99,38 @@ class MatrixOpsLibrary:
         else:
             raise OSError(f"Unsupported operating system: {system}")
     
+        # Identify architecture
         if 'arm' in machine or 'aarch64' in machine:
             arch = 'arm64'
         elif 'x86_64' in machine or 'amd64' in machine:
-            arch = 'x86_64'  # Changed from 'x64' to 'x86_64'
+            arch = 'x86_64'
         else:
-            raise OSError(f"Unsupported architecture: {machine}")
+            arch = ''  # This handles the case for a generic libsparse.so
+            print(f"Unknown or generic architecture: {machine}")
     
-        lib_name = f'libsparse_{arch}.{extension}'
+        # Use a more flexible naming pattern that handles various variations
+        # It matches names like:
+        # - libsparse_x86_64.so
+        # - libsparsex86_x64.so
+        # - libsparse_x86_x64.so
+        # - libsparse_arm64.so
+        # - libsparse.so
+        lib_name_pattern = re.compile(rf'libsparse(?:[_]?(x86_64|x86_x64|arm64))?\.{extension}')
+        
         package_dir = os.path.dirname(os.path.abspath(__file__))
-        lib_path = os.path.join(package_dir, 'lib', lib_name)
+        lib_dir = os.path.join(package_dir, 'lib')
     
-        if not os.path.exists(lib_path):
-            raise OSError(f"Library not found: {lib_path}")
+        # Look for a matching library in the lib directory
+        matching_libs = [f for f in os.listdir(lib_dir) if lib_name_pattern.match(f)]
+    
+        if not matching_libs:
+            raise OSError(f"No matching library found for architecture {arch} in {lib_dir}")
+    
+        # If multiple matching libraries are found, pick the first one
+        lib_path = os.path.join(lib_dir, matching_libs[0])
+    
+        # Debugging: Print the selected library path
+        print(f"Using library: {lib_path}")
     
         try:
             self._lib = ctypes.CDLL(lib_path)
@@ -111,6 +138,7 @@ class MatrixOpsLibrary:
             self._setup_function_prototypes()
         except OSError as e:
             raise OSError(f"Failed to load library: {lib_path}. Error: {e}")
+
 
     def _setup_function_prototypes(self):
         """
